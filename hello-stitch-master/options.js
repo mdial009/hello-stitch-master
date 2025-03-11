@@ -13,5 +13,13 @@ const options = {
         "#a1efe4",
         "#e9e9f4",
     ],
+    STITCH_THEME: [
+    "#9d74a0", 
+	"#6ac5e0", 	
+	"#5374a7", 	
+	"#1b4b7e", 
+	"#1e2c4f",
+      
+    ],
     MAX_NAME_LENGTH: 3000,
 };

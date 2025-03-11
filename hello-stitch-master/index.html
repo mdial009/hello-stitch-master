@@ -36,7 +36,6 @@
             }
 
             h1 {
-                color: #9d74a0; /* Purple */
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -44,6 +43,11 @@
                 line-height: 1.5rem; /* Adjusted line height */
                 text-transform: capitalize; /* Ensure the text transform matches */
                 margin-top: 0; /* Move content to the top */
+            }
+
+            .stitch-theme {
+                font-weight: bold;
+                margin: 0 2px;
             }
 
             h2 {
@@ -110,8 +114,8 @@
             }
 
             .favicon {
-                width: 12px;
-                height: 12px;
+                width: 16px;
+                height: 16px;
                 margin-right: 4px;
             }
 
@@ -119,10 +123,10 @@
                 font-size: 12px;
                 color: #888888; /* Grey */
                 margin-top: 1px; /* Reduce the space between the bookmark and the URL */
-                white-space: wrap; /* Prevent text from wrapping */
+                white-space: nowrap; /* Prevent text from wrapping */
                 overflow: hidden; /* Hide overflow text */
                 text-overflow: ellipsis; /* Add ellipsis for overflow text */
-                max-width: 500px; /* Limit the maximum width of the URL container */
+                max-width: 200px; /* Limit the maximum width of the URL container */
                 text-transform: none; /* Ensure the text is not transformed */
             }
 
@@ -171,48 +175,66 @@
                 line-height: 1.5rem; /* Adjusted line height */
                 text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
             }
+
+            #search-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-bottom: 1rem; /* Add margin below the search bar */
+            }
+
+            #search-input {
+                width: 500px; /* Adjust width as needed */
+                padding: 0.5rem;
+                font-size: 16px;
+                border: 1px solid #ff9900; /* Pink border */
+                border-radius: 4px;
+                background-color: rgba(255, 255, 255, 0); /* Slightly transparent background for columns */
+                margin-bottom: 1rem; /* Add margin below the search input */
+                color: #ff9900; /* Match the border color */
+            }
+
+            #search-input::placeholder {
+                color: #ff9900; /* Match the border color */
+            }
+
+            .filter-buttons {
+                display: flex;
+                gap: 0.4rem;
+            }
+
+            .filter-button {
+                padding: 0.4rem .4rem;
+                font-size: 12px;
+                border: .1px solid #ff9900; /* Pink border */
+                border-radius: 2px;
+                background-color: #000000; /* Black background */
+                color: #FFFFFF; /* White text */
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+
+            .filter-button:hover {
+                background-color: #ff9900; /* Pink background on hover */
+                color: #000000; /* Black text on hover */
+            }
         </style>
     </head>
     <body>
         <div id="header">
-            <h1 id="welcome">Hello, Stitch</h1>
+            <h1 id="welcome"></h1>
             <div id="timestamp">
                 <span id="date"></span> <span>-</span> <span id="hours"></span>:<span id="minutes"></span>:<span id="seconds"></span> <span id="ampm"></span>
             </div>
             <div id="day"></div>
         </div>
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search bookmarks...">
+            <div class="filter-buttons">
+                <!-- Filter buttons will be dynamically generated here -->
+                <button class="filter-button" id="filter-most-visited">Most Visited</button>
+            </div>
+        </div>
         <div id="container"></div>
-
-        <script>
-            // Scroll to the top of the page on load
-            window.addEventListener('load', () => {
-                window.scrollTo(0, 0);
-            });
-
-            // Update the timestamp with the current date and time
-            function updateTimestamp() {
-                const now = new Date();
-                const formattedDate = now.toLocaleDateString();
-                const hours = now.getHours();
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                const seconds = now.getSeconds().toString().padStart(2, '0');
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                const formattedHours = (hours % 12 || 12).toString().padStart(2, '0');
-                const day = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-                document.getElementById('date').textContent = formattedDate;
-                document.getElementById('hours').textContent = formattedHours;
-                document.getElementById('minutes').textContent = minutes;
-                document.getElementById('seconds').textContent = seconds;
-                document.getElementById('ampm').textContent = ampm;
-                document.getElementById('day').textContent = day;
-            }
-
-            // Call the function to update the timestamp
-            updateTimestamp();
-
-            // Optionally, update the timestamp every second
-            setInterval(updateTimestamp, 1000);
-        </script>
     </body>
 </html>
