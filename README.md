@@ -1,2 +1,2 @@
 # hello-stitch-master
- Personal Bowser Startup Page
+ Personal Browser Startup Page
