@@ -91,8 +91,9 @@
 
             li {
                 display: flex; /* Use flexbox for list items */
+                flex-direction: column; /* Arrange items vertically */
                 flex-grow: 1; /* Allow list items to grow */
-                align-items: center; /* Center items vertically */
+                align-items: flex-start; /* Align items to the start */
             }
 
             div.column {
@@ -100,7 +101,7 @@
                 flex-direction: column;
                 align-items: center;
                 justify-content: flex-start;
-                width: 1000px; /* Adjust10width as needed */
+                width: 1000px; /* Adjust width as needed */
                 height: 100%; /* Full height of the container */
                 overflow-y: auto; /* Enable vertical scrolling */
                 background-color: rgba(255, 255, 255, 0); /* Slightly transparent background for columns */
@@ -108,19 +109,21 @@
                 padding: 1rem; /* Padding inside columns */
             }
 
-            div.subfolder {
-                margin-left: 1rem; /* Indent subfolders */
-                padding-left: 1rem; /* Padding inside subfolders */
-                border-left: 2px solid #4F959D; /* Border for subfolders */
+            .favicon {
+                width: 12px;
+                height: 12px;
+                margin-right: 4px;
             }
 
-            .dropdown {
-                display: none; /* Hide dropdown by default */
-            }
-
-            .arrow {
-                font-size: 0.8rem; /* Adjust arrow size */
-                margin-left: 0.5rem; /* Space between text and arrow */
+            .url {
+                font-size: 12px;
+                color: #888888; /* Grey */
+                margin-top: 1px; /* Reduce the space between the bookmark and the URL */
+                white-space: wrap; /* Prevent text from wrapping */
+                overflow: hidden; /* Hide overflow text */
+                text-overflow: ellipsis; /* Add ellipsis for overflow text */
+                max-width: 500px; /* Limit the maximum width of the URL container */
+                text-transform: none; /* Ensure the text is not transformed */
             }
 
             #header {

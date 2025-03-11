@@ -18,10 +18,9 @@ const render = (columns) => {
                 if (bookmark.children && bookmark.children.length) {
                     return `<li>
                         <div class="subfolder">
-                            <h3 class="folder-title" style="color: ${colors[colourIndex]}">
+                            <h3 class="folder-title" style="color: ${colors[colourIndex]}" onclick="renderSubfolder('${bookmark.title}')">
                                 ${bookmark.title}
                             </h3>
-                            <ul>${renderColumn(bookmark)}</ul>
                         </div>
                     </li>`;
                 }
@@ -38,8 +37,9 @@ const render = (columns) => {
                         <a href="${bookmark.url}" ${
                     title.endsWith("…") ? `title="${bookmark.title}"` : ""
                 }>
-                            ${title}
+                            <img src="${bookmark.faviconUrl}" alt="" class="favicon"> ${title}
                         </a>
+                        <div class="url">${bookmark.url}</div>
                     </li>`;
             })
             .join("");
@@ -59,6 +59,30 @@ const render = (columns) => {
         .join("");
 
     document.getElementById("welcome").innerHTML = options.TITLE;
+};
+
+const renderSubfolder = (title) => {
+    const subfolder = findSubfolder(columns, title);
+    if (subfolder) {
+        render([subfolder]);
+    }
+};
+
+const findSubfolder = (columns, title) => {
+    for (const column of columns) {
+        for (const child of column.children) {
+            if (child.title === title) {
+                return child;
+            }
+            if (child.children && child.children.length) {
+                const result = findSubfolder([child], title);
+                if (result) {
+                    return result;
+                }
+            }
+        }
+    }
+    return null;
 };
 
 // Toggle dropdown visibility

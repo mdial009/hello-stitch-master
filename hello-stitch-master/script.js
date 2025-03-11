@@ -41,16 +41,7 @@ chrome.bookmarks.getTree((items) => {
 
 const visit = (column, node, path = []) => {
     if (node.children) {
-        const subFolder = {
-            title: node.title,
-            children: [],
-            path: [...path, node.title], // Set the path for subfolders
-            hasChildren: true, // Indicate that this folder has children
-        };
-
-        node.children.forEach((x) => visit(subFolder, x, subFolder.path));
-
-        column.children.push(subFolder);
+        node.children.forEach((x) => visit(column, x, [...path, node.title]));
         return;
     }
 
@@ -66,11 +57,14 @@ const addBookmark = (column, node, path = []) => {
     const isSeparator =
         options.SEPARATORS.includes(node.title) || node.type === "separator";
 
+    const faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(node.url).hostname}`;
+
     column.children.push({
         title: node.title,
         url: node.url,
         path: path,
         isSeparator,
+        faviconUrl,
     });
 };
 
@@ -107,7 +101,7 @@ if (window.browser) {
     window.browser.runtime.getBrowserInfo().then((browser) => {
         if (browser.name === "Firefox") {
             console.log(
-                `Hello, friend. On ${browser.name} you can make this your home page by setting the following URL in your home page preferences:`
+                `Hello, Stitch. On ${browser.name} you can make this your home page by setting the following URL in your home page preferences:`
             );
             console.log(window.location.href);
         }
