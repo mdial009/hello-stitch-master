@@ -1,240 +1,258 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <title>Hello, Stitch</title>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-        <script src="options.js"></script>
-        <script src="utils.js"></script>
-        <script src="render.js"></script>
-        <script src="script.js"></script>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-            body {
-                background-color: #000000; /* Black */
-                color: #FFFFFF; /* White */
-                margin: 0;
-                font-family: 'Roboto', sans-serif; /* Use the new font */
-                font-size: 14px;
-                line-height: 1.2rem;
-                text-transform: capitalize; /* Use capitalize instead of lowercase */
-                cursor: default;
-                overflow: hidden;
-                transition: 0.2s background-color;
-            }
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Hello, Stitch</title>
+    <script src="options.js"></script>
+    <script src="utils.js"></script>
+    <script src="render.js"></script>
+    <script src="script.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        background-color: #000000; /* Black */
+        color: #ffffff; /* White */
+        margin: 0;
+        font-family: "Roboto", sans-serif; /* Use the new font */
+        font-size: 14px;
+        line-height: 1.2rem;
+        text-transform: capitalize; /* Use capitalize instead of lowercase */
+        cursor: default;
+        overflow: hidden;
+        transition: 0.2s background-color;
+      }
 
-            #container {
-                display: flex;
-                flex-direction: row; /* Arrange columns side by side */
-                align-items: flex-start;
-                justify-content: flex-start;
-                height: 100vh; /* Full height of the viewport */
-                overflow-x: auto; /* Enable horizontal scrolling */
-                gap: 1rem; /* Space between columns */
-                padding: 1rem; /* Padding around the container */
-            }
+      #container {
+        display: flex;
+        flex-direction: row; /* Arrange columns side by side */
+        align-items: flex-start;
+        justify-content: flex-start;
+        height: 100vh; /* Full height of the viewport */
+        overflow-x: auto; /* Enable horizontal scrolling */
+        gap: 1rem; /* Space between columns */
+        padding: 1rem; /* Padding around the container */
+        flex-wrap: wrap; /* Allow columns to wrap to the next line */
+      }
 
-            h1 {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px; /* Increased font size */
-                line-height: 1.5rem; /* Adjusted line height */
-                text-transform: capitalize; /* Ensure the text transform matches */
-                margin-top: 0; /* Move content to the top */
-            }
+      h1 {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px; /* Increased font size */
+        line-height: 1.5rem; /* Adjusted line height */
+        text-transform: capitalize; /* Ensure the text transform matches */
+        margin-top: 0; /* Move content to the top */
+      }
 
-            .stitch-theme {
-                font-weight: bold;
-                margin: 0 2px;
-            }
+      .stitch-theme {
+        font-weight: bold;
+        margin: 0 2px;
+      }
 
-            h2 {
-                font-size: 2rem; /* Increased font size for folder titles */
-                color: #6ac5e0; /* Light Blue */
-                display: inline-block; /* Make the border adjust based on text length */
-                margin: 0.5rem 0; /* Add margin to avoid overlapping */
-                word-wrap: break-word; /* Handle long text */
-            }
+      h2 {
+        font-size: 2rem; /* Increased font size for folder titles */
+        color: #6ac5e0; /* Light Blue */
+        display: inline-block; /* Make the border adjust based on text length */
+        margin: 0.5rem 0; /* Add margin to avoid overlapping */
+        word-wrap: break-word; /* Handle long text */
+      }
 
-            h3 {
-                font-size: 1.5rem; /* Font size for subfolder titles */
-                color: #4F959D; /* Teal */
-                display: inline-block; /* Make the border adjust based on text length */
-                margin: 0.5rem 0; /* Add margin to avoid overlapping */
-                word-wrap: break-word; /* Handle long text */
-                cursor: pointer; /* Indicate that the element is clickable */
-            }
+      h3 {
+        font-size: 1.5rem; /* Font size for subfolder titles */
+        color: #4f959d; /* Teal */
+        display: inline-block; /* Make the border adjust based on text length */
+        margin: 0.5rem 0; /* Add margin to avoid overlapping */
+        word-wrap: break-word; /* Handle long text */
+        cursor: pointer; /* Indicate that the element is clickable */
+      }
 
-            a {
-                text-decoration: none;
-                color: #ff9900; /* Red */
-                font-weight: lighter;
-                display: inline-block; /* Make the border adjust based on text length */
-                margin: 0.5rem 0; /* Add margin to avoid overlapping */
-                word-wrap: break-word; /* Handle long text */
-            }
+      a {
+        text-decoration: none;
+        color: #ff9900; /* Red */
+        font-weight: lighter;
+        display: inline-block; /* Make the border adjust based on text length */
+        margin: 0.5rem 0; /* Add margin to avoid overlapping */
+        word-wrap: break-word; /* Handle long text */
+      }
 
-            .separator {
-                line-height: 0.75rem;
-            }
+      .separator {
+        line-height: 0.75rem;
+      }
 
-            a:hover {
-                color: #ff0000; /* White */
-                font-weight: bold;
-            }
+      a:hover {
+        color: #ff0000; /* White */
+        font-weight: bold;
+      }
 
-            ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-                flex-grow: 1; /* Allow the list to grow and fill the container */
-                overflow-y: auto; /* Enable vertical scrolling */
-            }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex-grow: 1; /* Allow the list to grow and fill the container */
+        overflow-y: auto; /* Enable vertical scrolling */
+      }
 
-            li {
-                display: flex; /* Use flexbox for list items */
-                flex-direction: column; /* Arrange items vertically */
-                flex-grow: 1; /* Allow list items to grow */
-                align-items: flex-start; /* Align items to the start */
-            }
+      li {
+        display: flex; /* Use flexbox for list items */
+        flex-direction: column; /* Arrange items vertically */
+        flex-grow: 1; /* Allow list items to grow */
+        align-items: flex-start; /* Align items to the start */
+      }
 
-            div.column {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: flex-start;
-                width: 1000px; /* Adjust width as needed */
-                height: 100%; /* Full height of the container */
-                overflow-y: auto; /* Enable vertical scrolling */
-                background-color: rgba(255, 255, 255, 0); /* Slightly transparent background for columns */
-                border-radius: 8px; /* Rounded corners */
-                padding: 1rem; /* Padding inside columns */
-            }
+      div.column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        width: calc(100% / 3 - 2rem); /* Adjust width to be responsive */
+        max-width: 300px; /* Maximum width for columns */
+        height: auto; /* Adjust height to fit content */
+        overflow-y: auto; /* Enable vertical scrolling */
+        background-color: rgba(
+          255,
+          255,
+          255,
+          0
+        ); /* Slightly transparent background for columns */
+        border-radius: 8px; /* Rounded corners */
+        padding: 1rem; /* Padding inside columns */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
+        margin-bottom: 1rem; /* Add margin at the bottom */
+      }
 
-            .favicon {
-                width: 16px;
-                height: 16px;
-                margin-right: 4px;
-            }
+      .favicon {
+        width: 16px;
+        height: 16px;
+        margin-right: 4px;
+      }
 
-            .url {
-                font-size: 12px;
-                color: #888888; /* Grey */
-                margin-top: 1px; /* Reduce the space between the bookmark and the URL */
-                white-space: nowrap; /* Prevent text from wrapping */
-                overflow: hidden; /* Hide overflow text */
-                text-overflow: ellipsis; /* Add ellipsis for overflow text */
-                max-width: 200px; /* Limit the maximum width of the URL container */
-                text-transform: none; /* Ensure the text is not transformed */
-            }
+      .url {
+        font-size: 12px;
+        color: #888888; /* Grey */
+        margin-top: 1px; /* Reduce the space between the bookmark and the URL */
+        white-space: nowrap; /* Prevent text from wrapping */
+        overflow: hidden; /* Hide overflow text */
+        text-overflow: ellipsis; /* Add ellipsis for overflow text */
+        max-width: 200px; /* Limit the maximum width of the URL container */
+        text-transform: none; /* Ensure the text is not transformed */
+      }
 
-            #header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 0.5rem;
-                margin-bottom: 1rem; /* Add margin to move the header up */
-            }
+      #header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem; /* Add margin to move the header up */
+      }
 
-            #timestamp {
-                display: flex;
-                gap: 0.2rem;
-                font-family: 'Roboto', sans-serif; /* Match the font of the Hello, Stitch text */
-                font-size: 24px; /* Increased font size */
-                line-height: 1.5rem; /* Adjusted line height */
-                text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
-            }
+      #timestamp {
+        display: flex;
+        gap: 0.2rem;
+        font-family: "Roboto", sans-serif; /* Match the font of the Hello, Stitch text */
+        font-size: 24px; /* Increased font size */
+        line-height: 1.5rem; /* Adjusted line height */
+        text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
+      }
 
-            #date {
-                color: #FFD700; /* Gold */
-            }
+      #date {
+        color: #ffd700; /* Gold */
+      }
 
-            #hours {
-                color: #32CD32; /* Lime Green */
-            }
+      #hours {
+        color: #32cd32; /* Lime Green */
+      }
 
-            #minutes {
-                color: #00CED1; /* Dark Turquoise */
-            }
+      #minutes {
+        color: #00ced1; /* Dark Turquoise */
+      }
 
-            #seconds {
-                color: #FF69B4; /* Hot Pink */
-            }
+      #seconds {
+        color: #ff69b4; /* Hot Pink */
+      }
 
-            #ampm {
-                color: #8A2BE2; /* Blue Violet */
-            }
+      #ampm {
+        color: #8a2be2; /* Blue Violet */
+      }
 
-            #day {
-                color: #FFFFFF; /* White */
-                font-family: 'Roboto', sans-serif; /* Match the font of the Hello, Stitch text */
-                font-size: 20px; /* Adjusted font size */
-                line-height: 1.5rem; /* Adjusted line height */
-                text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
-            }
+      #day {
+        color: #ffffff; /* White */
+        font-family: "Roboto", sans-serif; /* Match the font of the Hello, Stitch text */
+        font-size: 20px; /* Adjusted font size */
+        line-height: 1.5rem; /* Adjusted line height */
+        text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
+      }
 
-            #search-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                margin-bottom: 1rem; /* Add margin below the search bar */
-            }
+      #search-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 1rem; /* Add margin below the search bar */
+      }
 
-            #search-input {
-                width: 500px; /* Adjust width as needed */
-                padding: 0.5rem;
-                font-size: 16px;
-                border: 1px solid #ff9900; /* Pink border */
-                border-radius: 4px;
-                background-color: rgba(255, 255, 255, 0); /* Slightly transparent background for columns */
-                margin-bottom: 1rem; /* Add margin below the search input */
-                color: #ff9900; /* Match the border color */
-            }
+      #search-input {
+        width: 300px; /* Adjust width as needed */
+        padding: 0.5rem;
+        font-size: 16px;
+        border: 1px none #ff9900; /* Pink border */
+        border-radius: 4px;
+        background-color: rgba(
+          255,
+          255,
+          255,
+          0
+        ); /* Slightly transparent background for columns */
+        margin-bottom: 0.5rem; /* Add margin below the search input */
+        color: #ff9900; /* Match the border color */
+      }
 
-            #search-input::placeholder {
-                color: #ff9900; /* Match the border color */
-            }
+      #search-input::placeholder {
+        color: #ff9900; /* Match the border color */
+      }
 
-            .filter-buttons {
-                display: flex;
-                gap: 0.4rem;
-            }
+      .filter-buttons {
+        display: flex;
+        gap: 0.35rem;
+      }
 
-            .filter-button {
-                padding: 0.4rem .4rem;
-                font-size: 12px;
-                border: .1px solid #ff9900; /* Pink border */
-                border-radius: 2px;
-                background-color: #000000; /* Black background */
-                color: #FFFFFF; /* White text */
-                cursor: pointer;
-                transition: background-color 0.2s;
-            }
+      .filter-button {
+        padding: 0.4rem 0.4rem;
+        font-size: 12px;
+        border: 0.1px solid #ff9900; /* Pink border */
+        border-radius: 2px;
+        background-color: #00000000; /* Black background */
+        color: #ffffff; /* White text */
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
 
-            .filter-button:hover {
-                background-color: #ff9900; /* Pink background on hover */
-                color: #000000; /* Black text on hover */
-            }
-        </style>
-    </head>
-    <body>
-        <div id="header">
-            <h1 id="welcome"></h1>
-            <div id="timestamp">
-                <span id="date"></span> <span>-</span> <span id="hours"></span>:<span id="minutes"></span>:<span id="seconds"></span> <span id="ampm"></span>
-            </div>
-            <div id="day"></div>
-        </div>
-        <div id="search-container">
-            <input type="text" id="search-input" placeholder="Search bookmarks...">
-            <div class="filter-buttons">
-                <!-- Filter buttons will be dynamically generated here -->
-                <button class="filter-button" id="filter-most-visited">Most Visited</button>
-            </div>
-        </div>
-        <div id="container"></div>
-    </body>
+      .filter-button:hover {
+        background-color: #ff9900; /* Pink background on hover */
+        color: #000000; /* Black text on hover */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+      <h1 id="welcome"></h1>
+      <div id="timestamp">
+        <span id="date"></span> <span>-</span> <span id="hours"></span>:<span
+          id="minutes"
+        ></span
+        >:<span id="seconds"></span> <span id="ampm"></span>
+      </div>
+      <div id="day"></div>
+    </div>
+    <div id="search-container">
+      <input type="text" id="search-input" placeholder="Search bookmarks..." />
+      <div class="filter-buttons">
+        <!-- Filter buttons will be dynamically generated here -->
+        <button class="filter-button" id="filter-most-visited">
+          Most Visited
+        </button>
+      </div>
+    </div>
+    <div id="container"></div>
+  </body>
 </html>
