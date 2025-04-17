@@ -15,13 +15,13 @@
 
 ## Roadmap / Contributions
 
-See https://github.com/mdial009/hello-stitch/issues
+See https://github.com/jaywick/hello-friend/issues
 
 ## Local development
 
 Clone the source
 
-    git clone git@github.com:mdial009/hello-stitch.git
+    git clone git@github.com:jaywick/hello-friend.git
 
 Firefox
 

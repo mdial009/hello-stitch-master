@@ -3,9 +3,9 @@
   "description": "Dark terminal-esque new tab page with your bookmarks",
   "permissions": ["bookmarks", "history"],
   "icons": {
-    "16": "icons/16.png",
-    "48": "icons/48.png",
-    "128": "icons/128.png"
+    "16": "icons/web/icons8-stitch-color-16.png",
+    "48": "icons/web/icons8-stitch-color-48.png",
+    "144": "icons/web/icons8-stitch-color-144.png"
   },
   "version": "0.12",
   "chrome_url_overrides": {
@@ -14,7 +14,17 @@
   "manifest_version": 2,
   "applications": {
     "gecko": {
-      "id": "ext@xyz.jaywick.hello-friend"
+      "id": "ext@xyz.stitch.hello-friend"
     }
-  }
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/web/icons8-stitch-color-16.png",
+      "48": "icons/web/icons8-stitch-color-48.png",
+      "144": "icons/web/icons8-stitch-color-144.png"
+    },
+    "default_title": "Hello, Stitch",
+    "default_popup": "popup.html"
+  },
+  "theme_color": "#000000"
 }

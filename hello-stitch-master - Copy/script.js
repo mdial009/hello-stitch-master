@@ -11,6 +11,7 @@ chrome.bookmarks.getTree((items) => {
   }
 
   const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
+
   const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
 
   const rootColumn = {
@@ -19,6 +20,7 @@ chrome.bookmarks.getTree((items) => {
   };
 
   rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
+
   columns.push(rootColumn);
 
   rootFolders.forEach((node) => {
@@ -26,13 +28,15 @@ chrome.bookmarks.getTree((items) => {
       title: node.title,
       children: [],
     };
+
     visit(column, node);
+
     columns.push(column);
   });
 
   render(columns);
   generateFilterButtons(rootFolders);
-  filterMostVisited();
+  filterMostVisited(); // Apply the "Most Visited" filter by default
 });
 
 const visit = (column, node, path = []) => {
@@ -40,16 +44,23 @@ const visit = (column, node, path = []) => {
     node.children.forEach((x) => visit(column, x, [...path, node.title]));
     return;
   }
+
   addBookmark(column, node, path);
 };
 
 const addBookmark = (column, node, path = []) => {
-  if (!node.url || node.url.startsWith("javascript:")) return;
+  if (!node.url || node.url.startsWith("javascript:")) {
+    // ignore bookmarklets
+    return;
+  }
+
   const isSeparator =
     options.SEPARATORS.includes(node.title) || node.type === "separator";
+
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${
     new URL(node.url).hostname
   }`;
+
   column.children.push({
     title: node.title,
     url: node.url,
@@ -61,18 +72,22 @@ const addBookmark = (column, node, path = []) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.style.background = options.BACKGROUND;
-  updateTimestamp();
+  updateTimestamp(); // Call the function to update the timestamp
 
+  // Add event listener for search input
   document
     .getElementById("search-input")
     .addEventListener("input", filterBookmarks);
+
+  // Clear the search input field when the page reloads
   document.getElementById("search-input").value = "";
 
+  // Add event listeners for filter buttons
   document
     .getElementById("filter-most-visited")
     .addEventListener("click", filterMostVisited);
 
-  // "Hello, Stitch" colored text
+  // Generate the "Hello, Stitch" text with each letter in the Stitch theme
   const welcomeElement = document.getElementById("welcome");
   const titleText = options.TITLE;
   const colors = options.STITCH_THEME;
@@ -80,55 +95,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const span = document.createElement("span");
     span.className = "stitch-theme";
     span.style.color = colors[index % colors.length];
-    span.style.marginRight = "-2px";
+    span.style.marginRight = "-2px"; // Adjust the margin to make letters closer
     span.textContent = letter;
     welcomeElement.appendChild(span);
   });
-
-  // Button links
-  const chatgptButton = document.getElementById("chatgpt-button");
-  const redditButton = document.getElementById("reddit-button");
-  const twitchButton = document.getElementById("twitch-button");
-
-  if (chatgptButton)
-    chatgptButton.addEventListener("click", () =>
-      window.open("https://chat.openai.com/", "_blank")
-    );
-  if (redditButton)
-    redditButton.addEventListener("click", () =>
-      window.open("https://www.reddit.com/", "_blank")
-    );
-  if (twitchButton)
-    twitchButton.addEventListener("click", () =>
-      window.open("https://www.twitch.tv/", "_blank")
-    );
-
-  // Copy URL button
-  document.body.addEventListener("click", function (e) {
-    if (e.target.classList.contains("copy-url-btn")) {
-      const url = e.target.getAttribute("data-url");
-      navigator.clipboard.writeText(url).then(() => {
-        e.target.textContent = "✔";
-        setTimeout(() => {
-          e.target.textContent = "📋";
-        }, 1000);
-      });
-    }
-  });
-
-  // "Close All" collapsibles
-  const closeAllBtn = document.getElementById("close-all-filters");
-  if (closeAllBtn) {
-    closeAllBtn.addEventListener("click", () => {
-      document
-        .querySelectorAll(".filter-buttons details[open]")
-        .forEach((details) => {
-          details.open = false;
-        });
-    });
-  }
 });
 
+// Update the timestamp with the current date and time
 function updateTimestamp() {
   const now = new Date();
   const formattedDate = now.toLocaleDateString();
@@ -147,8 +120,10 @@ function updateTimestamp() {
   document.getElementById("day").textContent = day;
 }
 
+// Optionally, update the timestamp every second
 setInterval(updateTimestamp, 1000);
 
+// Notify Firefox users to set their home page
 if (window.browser) {
   window.browser.runtime.getBrowserInfo().then((browser) => {
     if (browser.name === "Firefox") {
@@ -160,13 +135,16 @@ if (window.browser) {
   });
 }
 
+// Filter bookmarks based on search input
 function filterBookmarks() {
   const input = document.getElementById("search-input").value.toLowerCase();
+  console.log(`Filtering bookmarks with input: ${input}`);
   const bookmarks = document.querySelectorAll(".bookmark-item");
   bookmarks.forEach((bookmark) => {
     const title = bookmark.querySelector("a")
       ? bookmark.querySelector("a").textContent.toLowerCase()
       : "";
+    console.log(`Checking bookmark: ${title}`);
     if (title.includes(input)) {
       bookmark.style.display = "";
     } else {
@@ -176,6 +154,7 @@ function filterBookmarks() {
   hideEmptySections();
 }
 
+// Filter bookmarks based on category
 function filterBy(category) {
   const bookmarks = document.querySelectorAll(".bookmark-item");
   bookmarks.forEach((bookmark) => {
@@ -191,6 +170,7 @@ function filterBy(category) {
   hideEmptySections();
 }
 
+// Filter bookmarks based on most visited
 function filterMostVisited() {
   if (typeof browser !== "undefined" && browser.history) {
     browser.history.search({ text: "", maxResults: 100 }).then((results) => {
@@ -209,7 +189,7 @@ function filterMostVisited() {
         }
       });
       if (!hasMostVisited) {
-        resetFilters();
+        resetFilters(); // Show regular view if no most visited bookmarks
       } else {
         hideEmptySections();
       }
@@ -231,7 +211,7 @@ function filterMostVisited() {
         }
       });
       if (!hasMostVisited) {
-        resetFilters();
+        resetFilters(); // Show regular view if no most visited bookmarks
       } else {
         hideEmptySections();
       }
@@ -241,6 +221,7 @@ function filterMostVisited() {
   }
 }
 
+// Hide empty sections
 function hideEmptySections() {
   const columns = document.querySelectorAll(".column");
   columns.forEach((column) => {
@@ -248,110 +229,65 @@ function hideEmptySections() {
     const hasVisibleBookmarks = Array.from(bookmarks).some(
       (bookmark) => bookmark.style.display !== "none"
     );
-    column.style.display = hasVisibleBookmarks ? "" : "none";
+    if (hasVisibleBookmarks) {
+      column.style.display = "";
+    } else {
+      column.style.display = "none";
+    }
   });
-  updateContainerClass();
 }
 
+// Generate filter buttons based on subfolders
 function generateFilterButtons(folders) {
   const filterButtonsContainer = document.querySelector(".filter-buttons");
-  filterButtonsContainer.innerHTML = "";
+  const subfolders = [];
 
-  function renderFolder(folder) {
-    if (folder.children && folder.children.length) {
-      const details = document.createElement("details");
-      const summary = document.createElement("summary");
-      summary.textContent = folder.title;
-      summary.className = "filter-folder-summary";
-      details.appendChild(summary);
-
-      folder.children
-        .filter((child) => child.children && child.children.length)
-        .forEach((child) => {
-          details.appendChild(renderFolder(child));
-        });
-
-      const button = document.createElement("button");
-      button.className = "filter-button";
-      button.textContent = `Show "${folder.title}"`;
-      button.addEventListener("click", () =>
-        filterBy(folder.title.toLowerCase())
-      );
-      details.appendChild(button);
-
-      return details;
+  const findSubfolders = (folder) => {
+    if (folder.children) {
+      folder.children.forEach((child) => {
+        if (child.children) {
+          subfolders.push(child);
+          findSubfolders(child);
+        }
+      });
     }
-    return null;
-  }
+  };
 
-  folders.forEach((folder) => {
-    const rendered = renderFolder(folder);
-    if (rendered) filterButtonsContainer.appendChild(rendered);
+  folders.forEach((folder) => findSubfolders(folder));
+
+  subfolders.sort((a, b) => a.title.localeCompare(b.title));
+
+  subfolders.forEach((subfolder) => {
+    const button = document.createElement("button");
+    button.className = "filter-button";
+    button.textContent = subfolder.title;
+    button.addEventListener("click", () =>
+      filterBy(subfolder.title.toLowerCase())
+    );
+    filterButtonsContainer.appendChild(button);
   });
 
+  // Add static filter button for "Recent"
   const recentButton = document.createElement("button");
   recentButton.className = "filter-button";
   recentButton.textContent = "Recent";
   recentButton.addEventListener("click", () => filterBy("recent"));
+  filterButtonsContainer.appendChild(recentButton);
 
+  // Add static filter button for "Reset" at the end
   const resetButton = document.createElement("button");
   resetButton.className = "filter-button";
   resetButton.textContent = "Reset";
   resetButton.addEventListener("click", resetFilters);
-
-  const closeAllBtn = document.createElement("button");
-  closeAllBtn.className = "filter-button close-all-btn";
-  closeAllBtn.textContent = "Close All";
-  closeAllBtn.title = "Collapse all folders";
-  closeAllBtn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".filter-buttons details[open]")
-      .forEach((details) => {
-        details.open = false;
-      });
-  });
-
-  const mostVisitedButton = document.createElement("button");
-  mostVisitedButton.className = "filter-button";
-  mostVisitedButton.id = "filter-most-visited";
-  mostVisitedButton.textContent = "Most Visited";
-
-  filterButtonsContainer.appendChild(mostVisitedButton);
-  filterButtonsContainer.appendChild(recentButton);
   filterButtonsContainer.appendChild(resetButton);
-  filterButtonsContainer.appendChild(closeAllBtn);
 }
 
+// Reset filters
 function resetFilters() {
   const bookmarks = document.querySelectorAll(".bookmark-item");
   bookmarks.forEach((bookmark) => {
     bookmark.style.display = "";
   });
-  document.getElementById("search-input").value = "";
+  document.getElementById("search-input").value = ""; // Clear search input
   hideEmptySections();
-}
-
-function openInNewTab(url) {
-  const newTab = window.open(url, "_blank");
-  if (newTab) {
-    newTab.focus();
-  } else {
-    console.error(
-      "Failed to open the link. Please check your browser settings."
-    );
-  }
-}
-
-function updateContainerClass() {
-  const container = document.getElementById("container");
-  const visibleColumns = Array.from(
-    container.querySelectorAll(".dynamic-column")
-  ).filter((col) => col.offsetParent !== null);
-
-  container.classList.remove("single-folder", "two-folders");
-  if (visibleColumns.length === 1) {
-    container.classList.add("single-folder");
-  } else if (visibleColumns.length === 2) {
-    container.classList.add("two-folders");
-  }
 }

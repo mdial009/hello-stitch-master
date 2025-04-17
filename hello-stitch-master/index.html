@@ -4,6 +4,49 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>Hello, Stitch</title>
+
+    <!-- Favicon for different devices -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="icons/web/icons8-stitch-color-16.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="icons/web/icons8-stitch-color-32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="48x48"
+      href="icons/web/icons8-stitch-color-48.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="64x64"
+      href="icons/web/icons8-stitch-color-64.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="icons/web/icons8-stitch-color-192.png"
+    />
+
+    <!-- Apple Touch Icon -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="icons/web/icons8-stitch-color-192.png"
+    />
+
+    <!-- Manifest for Android -->
+    <link rel="manifest" href="icons/web/site.webmanifest" />
+
     <script src="options.js"></script>
     <script src="utils.js"></script>
     <script src="render.js"></script>
@@ -19,20 +62,63 @@
         line-height: 1.2rem;
         text-transform: capitalize; /* Use capitalize instead of lowercase */
         cursor: default;
-        overflow: hidden;
+        overflow: inherit; /* Hide vertical scrollbar */
         transition: 0.2s background-color;
       }
 
       #container {
         display: flex;
-        flex-direction: row; /* Arrange columns side by side */
+        flex-direction: row;
         align-items: flex-start;
-        justify-content: flex-start;
+        justify-content: space-between; /* Dynamically adjusted in JS */
         height: 100vh; /* Full height of the viewport */
         overflow-x: auto; /* Enable horizontal scrolling */
         gap: 1rem; /* Space between columns */
         padding: 1rem; /* Padding around the container */
         flex-wrap: wrap; /* Allow columns to wrap to the next line */
+      }
+
+      .dynamic-column {
+        flex-grow: 1;
+        flex-basis: calc(
+          33.33% - 2rem
+        ); /* Default: one-third of the container */
+        max-width: 400px;
+        min-width: 250px;
+        height: auto;
+        overflow-y: auto;
+        background-color: rgba(255, 255, 255, 0);
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+      }
+
+      /* Center the column and make it take up space if there's only one folder */
+      #container.single-folder {
+        justify-content: center; /* Center the folder */
+      }
+
+      #container.single-folder .dynamic-column {
+        flex-basis: 60vw; /* Take up 60% of viewport width, or adjust as needed */
+        max-width: 700px;
+        min-width: 320px;
+      }
+
+      #container.two-folders {
+        justify-content: center;
+      }
+
+      #container.two-folders .dynamic-column {
+        flex-basis: 40vw; /* Each column takes 40% of viewport width */
+        max-width: 600px;
+        min-width: 320px;
+      }
+
+      /* Adjust column width for fewer columns */
+      #container.justify-center .dynamic-column {
+        flex-basis: 100%; /* Full width for a single column */
+        max-width: none;
       }
 
       h1 {
@@ -105,8 +191,11 @@
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        width: calc(100% / 3 - 2rem); /* Adjust width to be responsive */
-        max-width: 300px; /* Maximum width for columns */
+        flex-grow: 1; /* Allow columns to grow and fill available space */
+        flex-basis: calc(
+          33.33% - 2rem
+        ); /* Make columns take up one-third of the container width */
+        max-width: 400px; /* Limit the maximum width of columns */
         height: auto; /* Adjust height to fit content */
         overflow-y: auto; /* Enable vertical scrolling */
         background-color: rgba(
@@ -136,6 +225,12 @@
         text-overflow: ellipsis; /* Add ellipsis for overflow text */
         max-width: 200px; /* Limit the maximum width of the URL container */
         text-transform: none; /* Ensure the text is not transformed */
+        color: #888888;
+        margin-top: 1px;
+        white-space: normal; /* Allow wrapping */
+        overflow-wrap: anywhere; /* Break long URLs */
+        max-width: 100%; /* Use full width of the column */
+        text-overflow: unset;
       }
 
       #header {
@@ -191,19 +286,19 @@
         margin-bottom: 1rem; /* Add margin below the search bar */
       }
 
+      .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; /* Space between the search bar and buttons */
+      }
+
       #search-input {
         width: 300px; /* Adjust width as needed */
         padding: 0.5rem;
         font-size: 16px;
-        border: 1px none #ff9900; /* Pink border */
+        border: 1px solid #ff9900; /* Orange border */
         border-radius: 4px;
-        background-color: rgba(
-          255,
-          255,
-          255,
-          0
-        ); /* Slightly transparent background for columns */
-        margin-bottom: 0.5rem; /* Add margin below the search input */
+        background-color: rgba(255, 255, 255, 0); /* Transparent background */
         color: #ff9900; /* Match the border color */
       }
 
@@ -211,25 +306,215 @@
         color: #ff9900; /* Match the border color */
       }
 
-      .filter-buttons {
-        display: flex;
-        gap: 0.35rem;
-      }
-
-      .filter-button {
-        padding: 0.4rem 0.4rem;
-        font-size: 12px;
-        border: 0.1px solid #ff9900; /* Pink border */
-        border-radius: 2px;
-        background-color: #00000000; /* Black background */
+      .search-button {
+        padding: 0.4rem 0.8rem;
+        font-size: 14px;
+        border: 1px solid #ff9900; /* Orange border */
+        border-radius: 4px;
+        background-color: #000000; /* Black background */
         color: #ffffff; /* White text */
         cursor: pointer;
         transition: background-color 0.2s;
       }
 
-      .filter-button:hover {
-        background-color: #ff9900; /* Pink background on hover */
+      .search-button:hover {
+        background-color: #ff9900; /* Orange background on hover */
         color: #000000; /* Black text on hover */
+      }
+
+      .filter-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5em;
+        margin-top: 0.5em;
+        align-items: flex-start;
+        flex-wrap: wrap; /* Allow wrapping on small screens */
+      }
+
+      .filter-buttons details,
+      .filter-buttons button.filter-button {
+        margin-left: 0;
+        margin-bottom: 0;
+      }
+
+      .filter-folder-summary {
+        cursor: pointer;
+        font-weight: bold;
+        color: #ff9900;
+        padding: 0.2em 0.4em;
+        border-radius: 2px;
+        background: #222;
+        margin-bottom: 0.2em;
+      }
+      .filter-folder-summary:hover {
+        background: #ff9900;
+        color: #222;
+      }
+
+      .filter-buttons details details,
+      .filter-buttons details details details,
+      .filter-buttons details details details details {
+        margin-left: 0;
+      }
+
+      .chatgpt-btn {
+        background-color: #10a37f;
+        color: #fff;
+        border-color: #10a37f;
+      }
+      .chatgpt-btn:hover {
+        background-color: #fff;
+        color: #10a37f;
+      }
+
+      .reddit-btn {
+        background-color: #ff4500;
+        color: #fff;
+        border-color: #ff4500;
+      }
+      .reddit-btn:hover {
+        background-color: #fff;
+        color: #ff4500;
+      }
+
+      .twitch-btn {
+        background-color: #9147ff;
+        color: #fff;
+        border-color: #9147ff;
+      }
+      .twitch-btn:hover {
+        background-color: #fff;
+        color: #9147ff;
+      }
+
+      .url-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        width: 100%;
+      }
+
+      .copy-url-btn {
+        background: #222;
+        color: #ff9900;
+        border: 1px solid #ff9900;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 1em;
+        padding: 2px 6px;
+        margin-left: 4px;
+        transition: background 0.2s, color 0.2s;
+      }
+      .copy-url-btn:hover {
+        background: #ff9900;
+        color: #222;
+      }
+
+      details > summary.folder-title {
+        font-size: 1.1em;
+        font-weight: bold;
+        outline: none;
+        user-select: none;
+      }
+      details[open] > summary.folder-title {
+        color: #ff9900;
+      }
+      details ul {
+        margin-left: 1em;
+        padding-left: 1em;
+        border-left: 1px solid #444;
+      }
+
+      .filter-buttons details {
+        margin-bottom: 0.2em;
+        margin-left: 0; /* Top-level has no indent */
+      }
+
+      .filter-buttons details details {
+        margin-left: 1em; /* 1st nested level */
+      }
+      .filter-buttons details details details {
+        margin-left: 2em; /* 2nd nested level */
+      }
+      .filter-buttons details details details details {
+        margin-left: 3em; /* 3rd nested level */
+      }
+      /* Add more if you expect deeper nesting */
+
+      .filter-buttons details {
+        margin-bottom: 0.2em;
+      }
+      .filter-folder-summary {
+        cursor: pointer;
+        font-weight: bold;
+        color: #ff9900;
+        padding: 0.2em 0.4em;
+        border-radius: 2px;
+        background: #222;
+        margin-bottom: 0.2em;
+      }
+      .filter-folder-summary:hover {
+        background: #ff9900;
+        color: #222;
+      }
+      .filter-buttons button.filter-button {
+        margin: 0 0.15em 0.15em 0; /* Indent child buttons */
+      }
+
+      /* Style for the Close All button */
+      .close-all-btn {
+        background: #222;
+        color: #ff9900;
+        border: 1.5px solid #ff9900;
+        border-radius: 5px;
+        margin-left: 0.5em;
+        transition: background 0.2s, color 0.2s;
+      }
+      .close-all-btn:hover,
+      .close-all-btn:focus {
+        background: #ff9900;
+        color: #222;
+      }
+
+      .filter-button {
+        padding: 0.4rem 1.1rem;
+        font-size: 15px;
+        border: 1.5px solid #ff9900;
+        border-radius: 5px;
+        background: #181818;
+        color: #ff9900;
+        cursor: pointer;
+        font-weight: bold;
+        letter-spacing: 0.03em;
+        transition: background 0.2s, color 0.2s, border-color 0.2s,
+          box-shadow 0.2s;
+        outline: none;
+        margin: 0 0.15em 0.15em 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: inline-block;
+      }
+
+      .filter-button:hover,
+      .filter-button:focus {
+        background: #ff9900;
+        color: #181818;
+        border-color: #ff9900;
+        box-shadow: 0 4px 12px rgba(255, 153, 0, 0.15);
+      }
+
+      @media (max-width: 768px) {
+        .dynamic-column {
+          flex-basis: 100%; /* Full width for smaller screens */
+        }
+
+        #search-container {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .search-button {
+          width: 100%; /* Full width for buttons on smaller screens */
+        }
       }
     </style>
   </head>
@@ -245,12 +530,24 @@
       <div id="day"></div>
     </div>
     <div id="search-container">
-      <input type="text" id="search-input" placeholder="Search bookmarks..." />
+      <div class="search-bar">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search bookmarks..."
+        />
+        <button class="search-button chatgpt-btn" id="chatgpt-button">
+          ChatGPT
+        </button>
+        <button class="search-button reddit-btn" id="reddit-button">
+          Reddit
+        </button>
+        <button class="search-button twitch-btn" id="twitch-button">
+          Twitch
+        </button>
+      </div>
       <div class="filter-buttons">
         <!-- Filter buttons will be dynamically generated here -->
-        <button class="filter-button" id="filter-most-visited">
-          Most Visited
-        </button>
       </div>
     </div>
     <div id="container"></div>
