@@ -1,94 +1,188 @@
 const render = (columns) => {
   const root = document.getElementById("container");
+  const showCollapsible = columns.length > 1;
 
-  const renderColumn = (column) => {
-    const renderBookmark = (bookmark) => {
-      if (bookmark.children && bookmark.children.length) {
-        // Render subfolder as collapsible
-        return `
-          <li class="bookmark-item">
-            <details>
-              <summary class="folder-title" style="color: #4f959d; cursor:pointer;">
-                <span>${bookmark.title}</span>
-              </summary>
-              <ul>
-                ${bookmark.children.map(renderBookmark).join("")}
-              </ul>
-            </details>
-          </li>
-        `;
-      }
+  function renderGroupedBookmarks(bookmarks) {
+    // Group bookmarks by full path or ""
+    const groups = {};
+    bookmarks.forEach((bm) => {
+      const groupKey = bm.path && bm.path.length ? bm.path.join(" / ") : "";
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(bm);
+    });
 
-      const title = bookmark.path
-        ? bookmark.path.slice(1).concat(bookmark.title).join("/")
-        : bookmark.title;
+    // Render bookmarks with no group (no path or empty path) first
+    let html = "";
+    if (groups[""]) {
+      html += groups[""].map(renderBookmark).join("");
+      delete groups[""];
+    }
 
-      if (bookmark.isSeparator) {
-        return '<li class="separator bookmark-item">&nbsp;</li>';
-      }
+    // Render each group with a collapsible subfolder title
+    Object.keys(groups).forEach((group) => {
+      const groupColor = getFolderColor(group);
+      html += `
+        <li class="bookmark-item subfolder-group">
+          <details open>
+            <summary
+              class="folder-name"
+              title="${group}" 
+              style="margin-top:1em; margin-bottom:0.5em; color:${groupColor}; border-left: 4px solid ${groupColor}; padding-left: 0.5em;">
+              ${group.split(" / ").pop()}
+            </summary>
+            <ul>
+              ${groups[group].map(renderBookmark).join("")}
+            </ul>
+          </details>
+        </li>
+      `;
+    });
 
-      return `<li class="bookmark-item">
-        <a href="${bookmark.url}" ${
-        title.endsWith("…") ? `title="${bookmark.title}"` : ""
-      }>
-          <img src="${bookmark.faviconUrl}" alt="" class="favicon"
-            onerror="this.onerror=null;this.src='${getFaviconFallback(
-              bookmark.url
-            )}';"
-          > ${title}
-        </a>
-        <div class="url-container">
-          <span class="url" title="${bookmark.url}">${getShortUrl(
-        bookmark.url
-      )}</span>
-          <button class="copy-url-btn" data-url="${
-            bookmark.url
-          }" title="Copy URL">📋</button>
-        </div>
-      </li>`;
-    };
+    return html;
+  }
 
-    const listItems = column.children.map(renderBookmark).join("");
+  function renderBookmark(bookmark) {
+    // Separator
+    if (bookmark.isSeparator) {
+      return '<li class="separator bookmark-item">&nbsp;</li>';
+    }
 
-    return `<div class="column dynamic-column">
-      <h2 class="folder-name">${column.title}</h2>
-      <ul>${listItems}</ul>
-    </div>`;
-  };
+    // Regular bookmark
+    const title = bookmark.title;
+    const path = bookmark.path ? bookmark.path.join(" / ") : "";
+    return `<li class="bookmark-item" data-path="${path}">
+      <a href="${bookmark.url}" ${
+      title.endsWith("…") ? `title="${bookmark.title}"` : ""
+    }>
+        <img src="${
+          bookmark.faviconUrl
+        }" alt="" class="favicon" data-fallback="${getFaviconFallback(
+      bookmark.url
+    )}">
+        ${title}
+      </a>
+      <div class="url-container">
+        <span class="url" title="${bookmark.url}">${getShortUrl(
+      bookmark.url
+    )}</span>
+        <button class="copy-url-btn" data-url="${
+          bookmark.url
+        }" title="Copy URL">📋</button>
+      </div>
+    </li>`;
+  }
 
-  // Render the columns
+  function renderColumn(column) {
+    const listItems = renderGroupedBookmarks(column.children);
+    const color = getFolderColor(column.title);
+
+    if (showCollapsible) {
+      return `<div class="column dynamic-column" style="border-top: 4px solid ${color};">
+        <details open>
+          <summary class="column-summary" style="color:${color};">${getSingleColoredTitle(
+        column.title
+      )}</summary>
+          <ul>${listItems}</ul>
+        </details>
+      </div>`;
+    } else {
+      // Single column, no collapsible
+      return `<div class="column dynamic-column" style="border-top: 4px solid ${color};">
+        <h2 class="folder-name" style="color:${color};">${getSingleColoredTitle(
+        column.title
+      )}</h2>
+        <ul>${listItems}</ul>
+      </div>`;
+    }
+  }
+
   root.innerHTML = columns
     .filter((column) => column.children.length)
     .map(renderColumn)
     .join("");
   updateContainerClass();
+
+  // After rendering columns
+  setTimeout(() => {
+    document.querySelectorAll("img.favicon").forEach((img) => {
+      img.onerror = function () {
+        const fallback = img.getAttribute("data-fallback");
+        if (img.src !== fallback) img.src = fallback;
+      };
+    });
+  }, 0);
 };
 
 // Filter bookmarks based on search input
 function filterBookmarks() {
   const input = document.getElementById("search-input").value.toLowerCase();
-  const bookmarks = document.querySelectorAll(".bookmark-item");
+
+  // 1. Filter bookmarks (not subfolder groups)
+  const bookmarks = document.querySelectorAll(
+    ".bookmark-item:not(.subfolder-group)"
+  );
   bookmarks.forEach((bookmark) => {
-    const title = bookmark.querySelector("a")
-      ? bookmark.querySelector("a").textContent.toLowerCase()
-      : "";
-    bookmark.style.display = title.includes(input) ? "" : "none";
+    const link = bookmark.querySelector("a");
+    const title = link ? link.textContent.toLowerCase() : "";
+    const match = title.includes(input);
+    bookmark.style.display = match ? "" : "none";
   });
+
+  // 2. Show/hide subfolder groups based on their children
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    const visibleBookmarks = group.querySelectorAll(
+      ".bookmark-item:not(.subfolder-group)"
+    );
+    const anyVisible = Array.from(visibleBookmarks).some(
+      (item) => item.style.display !== "none"
+    );
+    group.style.display = anyVisible ? "" : "none";
+    // Open details if any child is visible, close if none
+    const details = group.querySelector("details");
+    if (details) details.open = anyVisible;
+  });
+
   hideEmptySections();
 }
 
 // Filter bookmarks based on category
 function filterBy(category) {
-  const bookmarks = document.querySelectorAll(".bookmark-item");
+  const cat = category.toLowerCase();
+  const bookmarks = document.querySelectorAll(
+    ".bookmark-item:not(.subfolder-group)"
+  );
   bookmarks.forEach((bookmark) => {
-    const title = bookmark.querySelector("a")
-      ? bookmark.querySelector("a").textContent.toLowerCase()
-      : "";
-    bookmark.style.display = title.includes(category.toLowerCase())
-      ? ""
-      : "none";
+    const path = (bookmark.getAttribute("data-path") || "").toLowerCase();
+    // Show if any segment of the path matches the category
+    const pathSegments = path.split(" / ").map((s) => s.trim());
+    const inFolder = pathSegments.includes(cat);
+    bookmark.style.display = inFolder ? "" : "none";
   });
+
+  // Show/hide subfolder groups based on their children
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    const visibleBookmarks = group.querySelectorAll(
+      ".bookmark-item:not(.subfolder-group)"
+    );
+    const anyVisible = Array.from(visibleBookmarks).some(
+      (item) => item.style.display !== "none"
+    );
+    group.style.display = anyVisible ? "" : "none";
+    const details = group.querySelector("details");
+    if (details) details.open = anyVisible;
+  });
+
   hideEmptySections();
+}
+
+// Normalize URL
+function normalizeUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname.replace(/\/$/, "");
+  } catch (e) {
+    return url;
+  }
 }
 
 // Filter bookmarks based on most visited
@@ -98,14 +192,19 @@ function filterMostVisited() {
 
   if (historyAPI) {
     historyAPI.search({ text: "", maxResults: 100 }, (results) => {
-      const mostVisitedUrls = results.map((result) => result.url);
-      const bookmarks = document.querySelectorAll(".bookmark-item");
+      console.log("History results:", results);
+      // Normalize history URLs
+      const mostVisitedUrls = results.map((result) => normalizeUrl(result.url));
+      console.log("Most visited (history):", mostVisitedUrls);
+      const bookmarks = document.querySelectorAll(
+        ".bookmark-item:not(.subfolder-group)"
+      );
       let hasMostVisited = false;
 
       bookmarks.forEach((bookmark) => {
-        const url = bookmark.querySelector("a")
-          ? bookmark.querySelector("a").href
-          : "";
+        const link = bookmark.querySelector("a");
+        const url = link ? normalizeUrl(link.href) : "";
+        console.log("Bookmark URL:", url);
         if (mostVisitedUrls.includes(url)) {
           bookmark.style.display = "";
           hasMostVisited = true;
@@ -114,10 +213,23 @@ function filterMostVisited() {
         }
       });
 
+      // Show/hide subfolder groups based on their children
+      document.querySelectorAll(".subfolder-group").forEach((group) => {
+        const visibleBookmarks = group.querySelectorAll(
+          ".bookmark-item:not(.subfolder-group)"
+        );
+        const anyVisible = Array.from(visibleBookmarks).some(
+          (item) => item.style.display !== "none"
+        );
+        group.style.display = anyVisible ? "" : "none";
+        const details = group.querySelector("details");
+        if (details) details.open = anyVisible;
+      });
+
+      hideEmptySections();
+
       if (!hasMostVisited) {
         resetFilters();
-      } else {
-        hideEmptySections();
       }
     });
   } else {
@@ -140,11 +252,29 @@ function hideEmptySections() {
 
 // Reset filters
 function resetFilters() {
-  const bookmarks = document.querySelectorAll(".bookmark-item");
-  bookmarks.forEach((bookmark) => {
+  // Show all bookmarks
+  document.querySelectorAll(".bookmark-item").forEach((bookmark) => {
     bookmark.style.display = "";
   });
-  document.getElementById("search-input").value = "";
+
+  // Show all subfolder groups and open their details
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    group.style.display = "";
+    const details = group.querySelector("details");
+    if (details) details.open = true;
+  });
+
+  // Show all columns and open their details if collapsible
+  document.querySelectorAll(".dynamic-column").forEach((column) => {
+    column.style.display = "";
+    const details = column.querySelector("details");
+    if (details) details.open = true;
+  });
+
+  // Clear search input
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) searchInput.value = "";
+
   hideEmptySections();
 }
 
@@ -189,6 +319,79 @@ function getFaviconFallback(url) {
   } catch (e) {
     return "icons/web/icons8-stitch-color-16.png";
   }
+}
+
+function getStitchColoredTitle(title) {
+  if (!title) return "";
+  // Capitalize the first letter of each word, lowercase the rest
+  const formatted = title
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return formatted
+    .split("")
+    .map(
+      (letter, i) => `<span class="stitch-theme color${i % 8}">${letter}</span>`
+    )
+    .join("");
+}
+
+function getMultiColoredPathTitle(pathString) {
+  if (!pathString) return "";
+  return pathString
+    .split(" / ")
+    .map((segment) => {
+      const color = getFolderColor(segment);
+      return `<span style="color:${color}; font-weight:bold;">${segment}</span>`;
+    })
+    .join(' <span style="color:#888;">/</span> ');
+}
+
+const folderColors = [
+  "#6ac5e0",
+  "#4f959d",
+  "#ff9900",
+  "#ff69b4",
+  "#ffd700",
+  "#32cd32",
+  "#00ced1",
+  "#8a2be2",
+  "#ff4500",
+  "#10a37f",
+  "#e67e22",
+  "#e74c3c",
+  "#1abc9c",
+  "#2ecc71",
+  "#3498db",
+  "#9b59b6",
+  "#34495e",
+  "#16a085",
+  "#27ae60",
+  "#2980b9",
+  "#8e44ad",
+  "#2c3e50",
+  "#f39c12",
+  "#d35400",
+  "#c0392b",
+  "#7f8c8d",
+  "#bada55",
+  "#39add1",
+  "#f26c4f",
+  "#a87ca0",
+  "#bdc3c7",
+];
+
+function getFolderColor(name) {
+  // Simple hash to pick a color based on folder name
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return folderColors[Math.abs(hash) % folderColors.length];
+}
+
+function getSingleColoredTitle(title) {
+  const color = getFolderColor(title);
+  return `<span style="color:${color}; font-weight:bold;">${title}</span>`;
 }
 
 const debouncedFilterBookmarks = debounce(filterBookmarks, 300);

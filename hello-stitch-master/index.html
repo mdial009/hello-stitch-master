@@ -60,7 +60,6 @@
         font-family: "Roboto", sans-serif; /* Use the new font */
         font-size: 14px;
         line-height: 1.2rem;
-        text-transform: capitalize; /* Use capitalize instead of lowercase */
         cursor: default;
         overflow: inherit; /* Hide vertical scrollbar */
         transition: 0.2s background-color;
@@ -69,29 +68,25 @@
       #container {
         display: flex;
         flex-direction: row;
+        flex-wrap: wrap;
         align-items: flex-start;
-        justify-content: space-between; /* Dynamically adjusted in JS */
-        height: 100vh; /* Full height of the viewport */
-        overflow-x: auto; /* Enable horizontal scrolling */
-        gap: 1rem; /* Space between columns */
-        padding: 1rem; /* Padding around the container */
-        flex-wrap: wrap; /* Allow columns to wrap to the next line */
+        justify-content: flex-start; /* Use all available space */
+        gap: 1rem;
+        padding: 1rem;
+        width: 100vw; /* Use full viewport width */
+        box-sizing: border-box;
+        min-height: 60vh;
       }
 
       .dynamic-column {
-        flex-grow: 1;
-        flex-basis: calc(
-          33.33% - 2rem
-        ); /* Default: one-third of the container */
-        max-width: 400px;
-        min-width: 250px;
-        height: auto;
-        overflow-y: auto;
-        background-color: rgba(255, 255, 255, 0);
-        border-radius: 8px;
-        padding: 1rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        flex: 1 1 350px; /* Grow and shrink, base width 350px */
+        min-width: 260px;
+        max-width: 100%;
         margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        box-sizing: border-box;
       }
 
       /* Center the column and make it take up space if there's only one folder */
@@ -111,7 +106,7 @@
 
       #container.two-folders .dynamic-column {
         flex-basis: 40vw; /* Each column takes 40% of viewport width */
-        max-width: 600px;
+        /*max-width: 600px; */
         min-width: 320px;
       }
 
@@ -131,13 +126,50 @@
         margin-top: 0; /* Move content to the top */
       }
 
+      #header {
+        text-align: center;
+        margin-top: 0.5em;
+      }
+
+      #welcome {
+        font-size: 2.2em;
+        font-weight: bold;
+        margin-bottom: 0.3em;
+      }
+
       .stitch-theme {
         font-weight: bold;
-        margin: 0 2px;
+        margin: 0 0.5px; /* Reduce horizontal space between letters */
+        letter-spacing: -1px; /* Pull letters closer together */
+      }
+
+      .stitch-theme.color0 {
+        color: #6ac5e0;
+      }
+      .stitch-theme.color1 {
+        color: #4f959d;
+      }
+      .stitch-theme.color2 {
+        color: #ff9900;
+      }
+      .stitch-theme.color3 {
+        color: #ff69b4;
+      }
+      .stitch-theme.color4 {
+        color: #ffd700;
+      }
+      .stitch-theme.color5 {
+        color: #32cd32;
+      }
+      .stitch-theme.color6 {
+        color: #00ced1;
+      }
+      .stitch-theme.color7 {
+        color: #8a2be2;
       }
 
       h2 {
-        font-size: 2rem; /* Increased font size for folder titles */
+        font-size: 3rem; /* Increased font size for folder titles */
         color: #6ac5e0; /* Light Blue */
         display: inline-block; /* Make the border adjust based on text length */
         margin: 0.5rem 0; /* Add margin to avoid overlapping */
@@ -176,7 +208,7 @@
         margin: 0;
         padding: 0;
         flex-grow: 1; /* Allow the list to grow and fill the container */
-        overflow-y: auto; /* Enable vertical scrolling */
+        /*overflow-y: auto; /* Enable vertical scrolling */
       }
 
       li {
@@ -191,23 +223,15 @@
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        flex-grow: 1; /* Allow columns to grow and fill available space */
-        flex-basis: calc(
-          33.33% - 2rem
-        ); /* Make columns take up one-third of the container width */
-        max-width: 400px; /* Limit the maximum width of columns */
-        height: auto; /* Adjust height to fit content */
-        overflow-y: auto; /* Enable vertical scrolling */
-        background-color: rgba(
-          255,
-          255,
-          255,
-          0
-        ); /* Slightly transparent background for columns */
-        border-radius: 8px; /* Rounded corners */
-        padding: 1rem; /* Padding inside columns */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
-        margin-bottom: 1rem; /* Add margin at the bottom */
+        flex: 1 1 300px;
+        min-width: 220px;
+        height: auto;
+        /*overflow-y: auto;*/
+        background-color: rgba(255, 255, 255, 0);
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
       }
 
       .favicon {
@@ -420,9 +444,9 @@
         color: #ff9900;
       }
       details ul {
-        margin-left: 1em;
-        padding-left: 1em;
-        border-left: 1px solid #444;
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
       }
 
       .filter-buttons details {
@@ -476,6 +500,10 @@
         color: #222;
       }
 
+      #close-all-btn {
+        display: none;
+      }
+
       .filter-button {
         padding: 0.4rem 1.1rem;
         font-size: 15px;
@@ -516,6 +544,58 @@
           width: 100%; /* Full width for buttons on smaller screens */
         }
       }
+
+      .column-summary {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #ff9900;
+        cursor: pointer;
+        padding: 0.3em 0.5em;
+        border-radius: 4px;
+        background: #181818;
+        /*margin-bottom: 0.1em; */
+        transition: background 0.2s, color 0.2s;
+      }
+      .column-summary:hover {
+        background: #ff9900;
+        color: #181818;
+      }
+
+      .folder-name,
+      .column-summary {
+        font-size: 2.5rem; /* or your preferred size */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .folder-name span.stitch-theme,
+      .column-summary span.stitch-theme {
+        margin: 0 0.5px;
+        letter-spacing: -1px;
+      }
+
+      #go-to-top {
+        display: none;
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        z-index: 999;
+        background: #181818;
+        color: #ff9900;
+        border: 2px solid #ff9900;
+        border-radius: 50px;
+        padding: 0.7em 1.2em;
+        font-size: 1.2em;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transition: background 0.2s, color 0.2s;
+      }
+      #go-to-top:hover {
+        background: #ff9900;
+        color: #181818;
+      }
     </style>
   </head>
   <body>
@@ -551,5 +631,6 @@
       </div>
     </div>
     <div id="container"></div>
+    <button id="go-to-top" title="Go to top">⬆ Top</button>
   </body>
 </html>

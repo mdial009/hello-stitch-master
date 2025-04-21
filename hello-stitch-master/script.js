@@ -33,6 +33,7 @@ chrome.bookmarks.getTree((items) => {
   render(columns);
   generateFilterButtons(rootFolders);
   filterMostVisited();
+  updateCloseAllVisibility();
 });
 
 const visit = (column, node, path = []) => {
@@ -60,30 +61,26 @@ const addBookmark = (column, node, path = []) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  const welcomeElement = document.getElementById("welcome");
+  if (welcomeElement) {
+    const titleText = "Hello, Stitch";
+    welcomeElement.innerHTML = titleText
+      .split("")
+      .map(
+        (letter, i) =>
+          `<span class="stitch-theme color${i % 8}">${letter}</span>`
+      )
+      .join("");
+  }
+
   document.body.style.background = options.BACKGROUND;
   updateTimestamp();
 
-  document
-    .getElementById("search-input")
-    .addEventListener("input", filterBookmarks);
-  document.getElementById("search-input").value = "";
-
-  document
-    .getElementById("filter-most-visited")
-    .addEventListener("click", filterMostVisited);
-
-  // "Hello, Stitch" colored text
-  const welcomeElement = document.getElementById("welcome");
-  const titleText = options.TITLE;
-  const colors = options.STITCH_THEME;
-  titleText.split("").forEach((letter, index) => {
-    const span = document.createElement("span");
-    span.className = "stitch-theme";
-    span.style.color = colors[index % colors.length];
-    span.style.marginRight = "-2px";
-    span.textContent = letter;
-    welcomeElement.appendChild(span);
-  });
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", debouncedFilterBookmarks);
+    searchInput.value = "";
+  }
 
   // Button links
   const chatgptButton = document.getElementById("chatgpt-button");
@@ -127,6 +124,34 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
   }
+
+  // Go to Top button logic
+  const goToTopBtn = document.getElementById("go-to-top");
+  const container = document.getElementById("container");
+
+  function updateGoToTopVisibility() {
+    // Show if either the window or the main container is scrolled down a bit
+    const windowScrolled = window.scrollY > 50;
+    const containerScrolled = container && container.scrollTop > 50;
+    if (windowScrolled || containerScrolled) {
+      goToTopBtn.style.display = "block";
+    } else {
+      goToTopBtn.style.display = "none";
+    }
+  }
+
+  // Listen for scroll on both window and container
+  window.addEventListener("scroll", updateGoToTopVisibility);
+  if (container) {
+    container.addEventListener("scroll", updateGoToTopVisibility);
+  }
+
+  goToTopBtn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (container) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  });
 });
 
 function updateTimestamp() {
@@ -162,32 +187,61 @@ if (window.browser) {
 
 function filterBookmarks() {
   const input = document.getElementById("search-input").value.toLowerCase();
-  const bookmarks = document.querySelectorAll(".bookmark-item");
+
+  // 1. Filter bookmarks (not subfolder groups)
+  const bookmarks = document.querySelectorAll(
+    ".bookmark-item:not(.subfolder-group)"
+  );
   bookmarks.forEach((bookmark) => {
-    const title = bookmark.querySelector("a")
-      ? bookmark.querySelector("a").textContent.toLowerCase()
-      : "";
-    if (title.includes(input)) {
-      bookmark.style.display = "";
-    } else {
-      bookmark.style.display = "none";
-    }
+    const link = bookmark.querySelector("a");
+    const title = link ? link.textContent.toLowerCase() : "";
+    const match = title.includes(input);
+    bookmark.style.display = match ? "" : "none";
   });
+
+  // 2. Show/hide subfolder groups based on their children
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    const visibleBookmarks = group.querySelectorAll(
+      ".bookmark-item:not(.subfolder-group)"
+    );
+    const anyVisible = Array.from(visibleBookmarks).some(
+      (item) => item.style.display !== "none"
+    );
+    group.style.display = anyVisible ? "" : "none";
+    // Open details if any child is visible, close if none
+    const details = group.querySelector("details");
+    if (details) details.open = anyVisible;
+  });
+
   hideEmptySections();
 }
 
 function filterBy(category) {
-  const bookmarks = document.querySelectorAll(".bookmark-item");
+  const cat = category.toLowerCase();
+  const bookmarks = document.querySelectorAll(
+    ".bookmark-item:not(.subfolder-group)"
+  );
   bookmarks.forEach((bookmark) => {
-    const title = bookmark.querySelector("a")
-      ? bookmark.querySelector("a").textContent.toLowerCase()
-      : "";
-    if (title.includes(category.toLowerCase())) {
-      bookmark.style.display = "";
-    } else {
-      bookmark.style.display = "none";
-    }
+    const path = (bookmark.getAttribute("data-path") || "").toLowerCase();
+    // Show if any segment of the path matches the category
+    const pathSegments = path.split(" / ").map((s) => s.trim());
+    const inFolder = pathSegments.includes(cat);
+    bookmark.style.display = inFolder ? "" : "none";
   });
+
+  // Show/hide subfolder groups based on their children
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    const visibleBookmarks = group.querySelectorAll(
+      ".bookmark-item:not(.subfolder-group)"
+    );
+    const anyVisible = Array.from(visibleBookmarks).some(
+      (item) => item.style.display !== "none"
+    );
+    group.style.display = anyVisible ? "" : "none";
+    const details = group.querySelector("details");
+    if (details) details.open = anyVisible;
+  });
+
   hideEmptySections();
 }
 
@@ -274,9 +328,10 @@ function generateFilterButtons(folders) {
       const button = document.createElement("button");
       button.className = "filter-button";
       button.textContent = `Show "${folder.title}"`;
-      button.addEventListener("click", () =>
-        filterBy(folder.title.toLowerCase())
-      );
+      button.addEventListener("click", () => {
+        filterBy(folder.title.toLowerCase());
+        updateCloseAllVisibility();
+      });
       details.appendChild(button);
 
       return details;
@@ -289,18 +344,17 @@ function generateFilterButtons(folders) {
     if (rendered) filterButtonsContainer.appendChild(rendered);
   });
 
-  const recentButton = document.createElement("button");
-  recentButton.className = "filter-button";
-  recentButton.textContent = "Recent";
-  recentButton.addEventListener("click", () => filterBy("recent"));
-
   const resetButton = document.createElement("button");
   resetButton.className = "filter-button";
   resetButton.textContent = "Reset";
-  resetButton.addEventListener("click", resetFilters);
+  resetButton.addEventListener("click", () => {
+    resetFilters();
+    updateCloseAllVisibility();
+  });
 
   const closeAllBtn = document.createElement("button");
   closeAllBtn.className = "filter-button close-all-btn";
+  closeAllBtn.id = "close-all-btn";
   closeAllBtn.textContent = "Close All";
   closeAllBtn.title = "Collapse all folders";
   closeAllBtn.addEventListener("click", () => {
@@ -309,25 +363,50 @@ function generateFilterButtons(folders) {
       .forEach((details) => {
         details.open = false;
       });
+    updateCloseAllVisibility();
   });
 
   const mostVisitedButton = document.createElement("button");
   mostVisitedButton.className = "filter-button";
   mostVisitedButton.id = "filter-most-visited";
   mostVisitedButton.textContent = "Most Visited";
+  mostVisitedButton.addEventListener("click", () => {
+    filterMostVisited();
+    updateCloseAllVisibility();
+  });
 
   filterButtonsContainer.appendChild(mostVisitedButton);
-  filterButtonsContainer.appendChild(recentButton);
   filterButtonsContainer.appendChild(resetButton);
   filterButtonsContainer.appendChild(closeAllBtn);
+
+  // Update visibility after rendering
+  updateCloseAllVisibility();
 }
 
 function resetFilters() {
-  const bookmarks = document.querySelectorAll(".bookmark-item");
-  bookmarks.forEach((bookmark) => {
+  // Show all bookmarks
+  document.querySelectorAll(".bookmark-item").forEach((bookmark) => {
     bookmark.style.display = "";
   });
-  document.getElementById("search-input").value = "";
+
+  // Show all subfolder groups and open their details
+  document.querySelectorAll(".subfolder-group").forEach((group) => {
+    group.style.display = "";
+    const details = group.querySelector("details");
+    if (details) details.open = true;
+  });
+
+  // Show all columns and open their details if collapsible
+  document.querySelectorAll(".dynamic-column").forEach((column) => {
+    column.style.display = "";
+    const details = column.querySelector("details");
+    if (details) details.open = true;
+  });
+
+  // Clear search input
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) searchInput.value = "";
+
   hideEmptySections();
 }
 
@@ -355,3 +434,19 @@ function updateContainerClass() {
     container.classList.add("two-folders");
   }
 }
+
+function updateCloseAllVisibility() {
+  const closeAllBtn = document.getElementById("close-all-btn");
+  if (!closeAllBtn) return;
+  const anyOpen = document.querySelector(".filter-buttons details[open]");
+  closeAllBtn.style.display = anyOpen ? "inline-block" : "none";
+}
+
+document.addEventListener("click", (e) => {
+  if (
+    e.target.tagName === "SUMMARY" &&
+    e.target.closest(".filter-buttons details")
+  ) {
+    setTimeout(updateCloseAllVisibility, 10); // Wait for open/close to apply
+  }
+});
