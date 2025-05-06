@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>Hello, Stitch</title>
+
     <!-- Favicon for different devices -->
     <link
       rel="icon"
@@ -115,20 +116,6 @@
         max-width: none;
       }
 
-      /* Spread columns evenly when jobs-hours-active is set */
-      .jobs-hours-active #container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2em;
-        justify-content: center;
-        align-items: flex-start;
-      }
-      .jobs-hours-active .dynamic-column {
-        flex: 1 1 300px;
-        min-width: auto;
-        /*max-width: 350px;*/
-      }
-
       h1 {
         display: flex;
         align-items: center;
@@ -202,9 +189,7 @@
         text-decoration: none;
         color: #ff9900; /* Red */
         font-weight: lighter;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3em;
+        display: inline-block; /* Make the border adjust based on text length */
         margin: 0.5rem 0; /* Add margin to avoid overlapping */
         word-wrap: break-word; /* Handle long text */
       }
@@ -355,22 +340,9 @@
         cursor: pointer;
         transition: background-color 0.2s;
       }
+
       .search-button:hover {
         background-color: #ff9900; /* Orange background on hover */
-        color: #000000; /* Black text on hover */
-      }
-      .total-number-button {
-        padding: 0.4rem 0.8rem;
-        font-size: 14px;
-        border: 1px solid #ff9900; /* Orange border */
-        border-radius: 4px;
-        background-color: #000000; /* Black background */
-        color: #ffffff; /* White text */
-        transition: background-color 0.2s;
-      }
-
-      .total-number-button:hover {
-        /*background-color: #ff9900; /* Orange background on hover */
         color: #000000; /* Black text on hover */
       }
 
@@ -439,20 +411,10 @@
         color: #9147ff;
       }
 
-      .search-button.youtube-btn {
-        background: #ff0000;
-        color: #fff;
-        border: none;
-        margin-left: 0.5em;
-      }
-      .search-button.youtube-btn:hover {
-        background: #cc0000;
-      }
-
       .url-container {
         display: flex;
         align-items: center;
-        /*gap: 0.5em;*/
+        gap: 0.5em;
         width: 100%;
       }
 
@@ -601,7 +563,7 @@
 
       .folder-name,
       .column-summary {
-        font-size: 1.5rem; /* or your preferred size */
+        font-size: 2.5rem; /* or your preferred size */
         display: flex;
         justify-content: center;
         align-items: center;
@@ -634,133 +596,6 @@
         background: #ff9900;
         color: #181818;
       }
-
-      .delete-bookmark-btn {
-        background: none;
-        border: none;
-        color: #ff5555;
-        cursor: pointer;
-        /*margin-left: 0.2em;*/
-        font-size: 1em;
-        transition: color 0.2s;
-      }
-      .delete-bookmark-btn:hover {
-        color: #ff0000;
-      }
-
-      .edit-bookmark-btn {
-        background: none;
-        border: none;
-        color: #ffd700;
-        cursor: pointer;
-        /*margin-left: 0.5em;*/
-        font-size: 1em;
-        transition: color 0.2s;
-      }
-      .edit-bookmark-btn:hover {
-        color: #ff9900;
-      }
-
-      #edit-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-      }
-      #edit-modal.active {
-        display: flex;
-      }
-      #edit-form {
-        background: #181818;
-        color: #fff;
-        padding: 2em;
-        border-radius: 8px;
-        min-width: 320px;
-        display: flex;
-        flex-direction: column;
-        gap: 1em;
-        box-shadow: 0 4px 24px #000a;
-      }
-      #edit-form input {
-        width: 100%;
-        padding: 0.5em;
-        margin-top: 0.2em;
-        background: #222;
-        border: 1px solid #444;
-        color: #fff;
-        border-radius: 4px;
-      }
-      #edit-cancel,
-      #edit-save {
-        padding: 0.5em 1.2em;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-      }
-      #edit-cancel {
-        background: #333;
-        color: #fff;
-      }
-      #edit-save {
-        background: #ff9900;
-        color: #181818;
-        font-weight: bold;
-      }
-
-      /* Themed Folder Dropdown */
-      #edit-folder {
-        width: 100%;
-        padding: 0.5em;
-        margin-top: 0.2em;
-        background: #222;
-        border: 1px solid #ff9900;
-        color: #ff9900;
-        border-radius: 4px;
-        font-size: 1em;
-        appearance: none;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
-
-      #edit-folder:focus {
-        border-color: #ffd700;
-        box-shadow: 0 0 0 2px #ffd70044;
-      }
-
-      #edit-folder option {
-        background: #181818;
-        color: #ff9900;
-      }
-
-      .new-badge {
-        background: #ff9900;
-        color: #181818;
-        font-size: 0.8em;
-        font-weight: bold;
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin-left: 8px;
-        letter-spacing: 1px;
-        white-space: nowrap;
-        vertical-align: middle;
-        display: inline-block;
-        animation: new-bounce 1s infinite alternate;
-      }
-      @keyframes new-bounce {
-        0% {
-          transform: scale(1);
-        }
-        100% {
-          transform: scale(1.15);
-        }
-      }
     </style>
   </head>
   <body>
@@ -790,15 +625,6 @@
         <button class="search-button twitch-btn" id="twitch-button">
           Twitch
         </button>
-        <button class="search-button youtube-btn" id="youtube-button">
-          YouTube
-        </button>
-        <button class="total-number-button">
-          <span
-            id="total-bookmark-count"
-            style="margin-left: 0.1em; font-weight: bold; color: #ff9900"
-          ></span>
-        </button>
       </div>
       <div class="filter-buttons">
         <!-- Filter buttons will be dynamically generated here -->
@@ -806,25 +632,5 @@
     </div>
     <div id="container"></div>
     <button id="go-to-top" title="Go to top">⬆ Top</button>
-    <div id="edit-modal">
-      <form id="edit-form">
-        <label>
-          Title:
-          <input type="text" id="edit-title" />
-        </label>
-        <label>
-          URL:
-          <input type="text" id="edit-url" />
-        </label>
-        <label>
-          Folder:
-          <select id="edit-folder"></select>
-        </label>
-        <div style="display: flex; gap: 1em; justify-content: flex-end">
-          <button type="button" id="edit-cancel">Cancel</button>
-          <button type="submit" id="edit-save">Save</button>
-        </div>
-      </form>
-    </div>
   </body>
 </html>

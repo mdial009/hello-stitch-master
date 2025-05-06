@@ -97,23 +97,69 @@ const mockBookmarks = [
   },
 ];
 
-function processBookmarks(tree) {
-  const columns = [];
-  function visit(node, path = []) {
-    if (node.url) {
-      columns.push({
-        title: node.title,
-        url: node.url,
-        path: path.slice(1), // skip root
-      });
-    }
-    if (node.children) {
-      node.children.forEach((child) => visit(child, path.concat(node.title)));
-    }
+const processBookmarks = (items) => {
+  console.log("Bookmarks Tree:", items); // Debug log
+
+  const bookmarksBar = items.find((x) => options.ROOT_FOLDER.test(x.title));
+
+  if (!bookmarksBar) {
+    console.error(`Was expecting a folder called '${options.ROOT_FOLDER}'`);
+    return; // Exit if the root folder is not found
   }
-  visit(tree[0]);
-  return [{ title: "Bookmarks", children: columns }];
-}
+
+  const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
+
+  const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+
+  const rootColumn = {
+    title: "/",
+    children: [],
+  };
+
+  rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
+
+  columns.push(rootColumn);
+
+  rootFolders.forEach((node) => {
+    const column = {
+      title: node.title,
+      children: [],
+    };
+
+    visit(column, node);
+
+    columns.push(column);
+  });
+
+  console.log("Columns:", columns); // Debug log
+  render(columns);
+};
+
+const visit = (column, node, path = []) => {
+  if (node.children) {
+    node.children.forEach((x) => visit(column, x, [...path, node.title]));
+    return;
+  }
+
+  addBookmark(column, node, path);
+};
+
+const addBookmark = (column, node, path = []) => {
+  if (!node.url || node.url.startsWith("javascript:")) {
+    // ignore bookmarklets
+    return;
+  }
+
+  const isSeparator =
+    options.SEPARATORS.includes(node.title) || node.type === "separator";
+
+  column.children.push({
+    title: node.title,
+    url: node.url,
+    path: path,
+    isSeparator,
+  });
+};
 
 const updateTimestamp = () => {
   const now = new Date();
@@ -141,8 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("DOMContentLoaded event fired"); // Debug log
 
   // Use mock data for testing with Live Server
-  const processedBookmarks = processBookmarks(mockBookmarks);
-  console.log("Processed Bookmarks:", processedBookmarks);
+  processBookmarks(mockBookmarks);
 
   // Update the timestamp
   updateTimestamp();
