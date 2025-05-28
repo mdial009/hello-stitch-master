@@ -33,8 +33,9 @@ chrome.bookmarks.getTree((items) => {
   currentColumns = columns;
   render(currentColumns);
   generateFilterButtons(rootFolders);
-  filterJobsOrMostVisited();
+  autoApplyWorkMode();
   updateCloseAllVisibility();
+  updateWorkModeButton();
 });
 
 function refreshBookmarks() {
@@ -63,6 +64,7 @@ function refreshBookmarks() {
     render(currentColumns);
     generateFilterButtons(rootFolders);
     updateCloseAllVisibility();
+    updateWorkModeButton();
   });
 }
 
@@ -260,6 +262,9 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
   }, 0);
+
+  autoApplyWorkMode();
+  updateWorkModeButton();
 });
 
 function updateTimestamp() {
@@ -600,6 +605,20 @@ function generateFilterButtons(folders) {
     updateCloseAllVisibility();
   });
 
+  const workModeButton = document.createElement("button");
+  workModeButton.className = "filter-button";
+  workModeButton.id = "filter-work-mode";
+  workModeButton.textContent = "Work Mode: OFF";
+  workModeButton.addEventListener("click", toggleWorkMode);
+
+  const configureWorkModeButton = document.createElement("button");
+  configureWorkModeButton.className = "filter-button";
+  configureWorkModeButton.id = "configure-work-mode";
+  configureWorkModeButton.textContent = "Configure Work Mode";
+  configureWorkModeButton.addEventListener("click", openWorkModeModal);
+
+  filterButtonsContainer.appendChild(workModeButton);
+  filterButtonsContainer.appendChild(configureWorkModeButton);
   filterButtonsContainer.appendChild(jobsHoursButton);
   filterButtonsContainer.appendChild(mostVisitedButton);
   filterButtonsContainer.appendChild(resetButton);
@@ -704,4 +723,203 @@ document.addEventListener("click", function (e) {
 
 function renderCurrent() {
   render(currentColumns);
+}
+
+const WORK_MODE_KEY = "workModeFolders";
+
+// Open modal with all folders as checkboxes
+function openWorkModeModal() {
+  const modal = document.getElementById("workmode-modal");
+  const folderList = document.getElementById("workmode-folder-list");
+  folderList.innerHTML = "";
+
+  // Get all folders (top-level and subfolders)
+  const allFolders = [];
+  columns.forEach((col) => {
+    if (col.title !== "/") {
+      allFolders.push({ title: col.title, path: col.title });
+    }
+    col.children.forEach((bm) => {
+      if (bm.path && bm.path.length > 0) {
+        const subPath = bm.path.join(" / ");
+        if (!allFolders.some((f) => f.path === subPath)) {
+          allFolders.push({
+            title: bm.path[bm.path.length - 1],
+            path: subPath,
+          });
+        }
+      }
+    });
+  });
+
+  // Remove duplicates
+  const uniqueFolders = Array.from(new Set(allFolders.map((f) => f.path))).map(
+    (path) => allFolders.find((f) => f.path === path)
+  );
+
+  // Load saved selection
+  const saved = JSON.parse(localStorage.getItem(WORK_MODE_KEY) || "[]");
+
+  // --- Add Select All checkbox ---
+  const selectAllLabel = document.createElement("label");
+  selectAllLabel.style.display = "flex";
+  selectAllLabel.style.alignItems = "center";
+  selectAllLabel.style.gap = "0.5em";
+  selectAllLabel.style.fontWeight = "bold";
+  const selectAllCheckbox = document.createElement("input");
+  selectAllCheckbox.type = "checkbox";
+  selectAllCheckbox.id = "workmode-select-all";
+  selectAllLabel.appendChild(selectAllCheckbox);
+  selectAllLabel.appendChild(document.createTextNode("Select All"));
+  folderList.appendChild(selectAllLabel);
+
+  // --- Folder checkboxes ---
+  uniqueFolders.forEach((folder) => {
+    const id = "workmode-folder-" + btoa(folder.path).replace(/=/g, "");
+    const label = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "0.5em";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = folder.path;
+    checkbox.id = id;
+    if (saved.includes(folder.path)) checkbox.checked = true;
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(folder.path));
+    folderList.appendChild(label);
+  });
+
+  // --- Select All logic ---
+  const allFolderCheckboxes = () =>
+    Array.from(
+      folderList.querySelectorAll(
+        'input[type="checkbox"]:not(#workmode-select-all)'
+      )
+    );
+
+  // Set Select All state based on current selection
+  function updateSelectAllState() {
+    const boxes = allFolderCheckboxes();
+    selectAllCheckbox.checked = boxes.every((cb) => cb.checked);
+    selectAllCheckbox.indeterminate =
+      !selectAllCheckbox.checked && boxes.some((cb) => cb.checked);
+  }
+  updateSelectAllState();
+
+  // When Select All is toggled, check/uncheck all
+  selectAllCheckbox.addEventListener("change", () => {
+    allFolderCheckboxes().forEach((cb) => {
+      cb.checked = selectAllCheckbox.checked;
+    });
+  });
+
+  // When any folder checkbox changes, update Select All state
+  folderList.addEventListener("change", (e) => {
+    if (e.target !== selectAllCheckbox) updateSelectAllState();
+  });
+
+  modal.classList.add("active");
+  modal.style.display = "flex";
+
+  document.getElementById("workmode-cancel").onclick = () => {
+    modal.classList.remove("active");
+    modal.style.display = "none";
+  };
+
+  document.getElementById("workmode-form").onsubmit = (e) => {
+    e.preventDefault();
+    const checked = allFolderCheckboxes()
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
+    localStorage.setItem(WORK_MODE_KEY, JSON.stringify(checked));
+    modal.classList.remove("active");
+    modal.style.display = "none";
+    applyWorkModeFilter();
+  };
+}
+
+// Filter columns to only show selected folders/paths
+function applyWorkModeFilter() {
+  const selected = JSON.parse(localStorage.getItem(WORK_MODE_KEY) || "[]");
+  if (!selected.length) {
+    // If nothing selected, show all
+    currentColumns = columns;
+    render(currentColumns);
+    document.body.classList.remove("jobs-hours-active");
+    return;
+  }
+
+  // Each selected path becomes its own column, containing all bookmarks with that path
+  const newColumns = selected.map((selPath) => {
+    // Find all bookmarks matching this path
+    let bookmarks = [];
+    columns.forEach((col) => {
+      // If the column itself matches
+      if (col.title === selPath) {
+        bookmarks = bookmarks.concat(col.children);
+      } else {
+        // Otherwise, find bookmarks with matching path
+        bookmarks = bookmarks.concat(
+          col.children.filter((bm) => (bm.path || []).join(" / ") === selPath)
+        );
+      }
+    });
+    return {
+      title: selPath,
+      children: bookmarks,
+    };
+  });
+
+  currentColumns = newColumns;
+  render(currentColumns);
+  document.body.classList.add("jobs-hours-active");
+}
+
+// Auto-apply Work Mode during work hours (8am–6pm EST, US workdays)
+function isWorkModeTime() {
+  const now = new Date();
+  const estNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  const hours = estNow.getHours();
+  const day = estNow.getDay();
+  if (day === 0 || day === 6) return false; // Weekend
+  return hours >= 8 && hours < 18;
+}
+
+// Call this after bookmarks are loaded or refreshed:
+function autoApplyWorkMode() {
+  const workModeFolders = JSON.parse(
+    localStorage.getItem(WORK_MODE_KEY) || "[]"
+  );
+  const workModeEnabled = JSON.parse(
+    localStorage.getItem("workModeEnabled") || "false"
+  );
+  if (workModeEnabled && workModeFolders.length) {
+    applyWorkModeFilter();
+  } else if (isESTJobsTimeAndWorkday()) {
+    filterJobsOnly();
+  } else {
+    currentColumns = columns;
+    render(currentColumns);
+    document.body.classList.remove("jobs-hours-active");
+  }
+}
+
+function updateWorkModeButton() {
+  const btn = document.getElementById("filter-work-mode");
+  const enabled = JSON.parse(
+    localStorage.getItem("workModeEnabled") || "false"
+  );
+  if (btn) btn.textContent = enabled ? "Work Mode: ON" : "Work Mode: OFF";
+}
+
+function toggleWorkMode() {
+  const enabled = JSON.parse(
+    localStorage.getItem("workModeEnabled") || "false"
+  );
+  localStorage.setItem("workModeEnabled", !enabled);
+  updateWorkModeButton();
+  autoApplyWorkMode();
 }

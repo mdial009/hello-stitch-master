@@ -1,5 +1,9 @@
 const render = (columns) => {
   const root = document.getElementById("container");
+  if (!root) {
+    console.warn("render: #container not found in DOM.");
+    return;
+  }
   const showCollapsible = columns.length > 1;
 
   function renderGroupedBookmarks(bookmarks) {
