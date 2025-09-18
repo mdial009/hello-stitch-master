@@ -7,7 +7,7 @@
     "48": "icons/web/icons8-stitch-color-48.png",
     "144": "icons/web/icons8-stitch-color-144.png"
   },
-  "version": "0.13",
+  "version": "0.15",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
