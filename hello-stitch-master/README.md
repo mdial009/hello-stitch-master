@@ -35,3 +35,17 @@ Chrome
 2. Tick _Developer mode_ toggle at top right
 3. Click _Load Unpacked_
 4. Choose the directory of this extension's source code
+
+
+### Additional Notes
+
+*Styles*: All CSS has been pulled out of the HTML file and now lives in `styles.css`. This keeps markup clean and makes layout tweaks simpler.
+
+*Tests*: A lightweight test script lives under `tests/utils.test.js`. It exercises several helpers and can be run with Node:
+
+```bash
+node tests/utils.test.js
+```
+
+It will print `utils tests passed` if everything is working correctly.
+

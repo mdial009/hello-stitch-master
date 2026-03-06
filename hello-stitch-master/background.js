@@ -1,4 +1,5 @@
-// filepath: c:\Users\diallo_madany\Downloads\hello-friend-master\hello-friend-master\background.js
+// Installation hook kept for future actions
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("Hello Stitch extension installed");
+  // Future: could add initialization logic here
 });
+

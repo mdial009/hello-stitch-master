@@ -10,16 +10,6 @@ let isShowingPins = false;
 const tagsByUrl = JSON.parse(localStorage.getItem(TAGS_KEY) || "{}");
 window.tagsByUrl = tagsByUrl;
 
-
-// Apply theme on DOM ready (after options.js is loaded)
-function applyThemeOnReady() {
-  const THEME_KEY = "selectedTheme";
-  const savedTheme = localStorage.getItem(THEME_KEY) || "default";
-  if (savedTheme && savedTheme !== "default") {
-    document.body.classList.add("theme-" + savedTheme);
-  }
-}
-
 function saveTags() {
   localStorage.setItem(TAGS_KEY, JSON.stringify(tagsByUrl));
 }
@@ -76,114 +66,94 @@ chrome.bookmarks.getTree((items) => {
   if (container) container.classList.add("loaded");
   if (goToTop) goToTop.classList.add("loaded");
   
-  // Render title now that bookmarks are loaded and header is visible
-  const welcomeElement = document.getElementById("welcome");
-  const CUSTOM_TITLE_KEY = "customTitle";
-  const DEFAULT_TITLE = "Hello, Stitch";
-  if (welcomeElement) {
-    const savedTitle = localStorage.getItem(CUSTOM_TITLE_KEY) || DEFAULT_TITLE;
-    welcomeElement.innerHTML = savedTitle
-      .split("")
-      .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
-      .join("");
-  }
+  // Get the bookmarks bar directly - no longer requires "Stitch" folder
+  const bookmarksBar = items[0];
   
-  // Find the "Stitch" folder
-  const bookmarksBar = items[0].children.find((x) =>
-    options.ROOT_FOLDER.test(x.title)
-  );
-
-  if (!bookmarksBar) {
-    console.error(`Was expecting a folder called '${options.ROOT_FOLDER}'`);
+  if (!bookmarksBar || !bookmarksBar.children) {
+    console.error("No bookmarks found");
     return;
   }
-
-  // Separate root bookmarks (bookmarks at root level) from folders
+  
   const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
   const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
 
-  // Create root column with title "/" for root-level bookmarks
-  const rootColumn = {
-    title: "/",
-    children: [],
-  };
-
-  // Add root-level bookmarks to the root column
+  // Create root column for bookmarks at the top level
+  const rootColumn = { title: "/", id: bookmarksBar.id, children: [] };
   rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
+  if (rootColumn.children.length > 0) {
+    columns.push(rootColumn);
+  }
 
-  // Add root column to columns array
-  columns.push(rootColumn);
-
-  // Process each subfolder as a column
+  // Process each folder as a column
   rootFolders.forEach((node) => {
-    const column = {
-      title: node.title,
-      children: [],
-    };
-
+    const column = { title: node.title, id: node.id, children: [] };
     visit(column, node);
-
     columns.push(column);
   });
 
-  currentColumns = columns;
-  // Set default sort preference to "frequency" if not already set
-  if (!localStorage.getItem(SORT_PREFERENCE_KEY)) {
-    localStorage.setItem(SORT_PREFERENCE_KEY, "frequency");
+  // If no columns were created, try to get bookmarks from other folders
+  if (columns.length === 0) {
+    const allFolders = items[0].children.filter((n) => !!n.children);
+    allFolders.forEach((node) => {
+      const column = { title: node.title, id: node.id, children: [] };
+      visit(column, node);
+      if (column.children.length > 0) {
+        columns.push(column);
+      }
+    });
   }
-  // Update visit counts first, then render after counts are available
-  updateVisitCounts(() => {
-    updateDuplicates();
-    autoTagAll();
-    renderCurrent();
-    generateFilterButtons(rootFolders);
-    updateSortButton();
-    autoApplyWorkMode();
-    updateCloseAllVisibility();
-    updateWorkModeButton();
-  });
+
+  currentColumns = columns;
+  updateVisitCounts();
+  updateDuplicates();
+  autoTagAll();
+  renderCurrent();
+  generateFilterButtons(rootFolders);
+  updateSortButton();
+  autoApplyWorkMode();
+  updateCloseAllVisibility();
+  updateWorkModeButton();
 });
 
 function refreshBookmarks() {
   columns.length = 0;
   chrome.bookmarks.getTree((items) => {
-    // Find the "Stitch" folder
-    const bookmarksBar = items[0].children.find((x) =>
-      options.ROOT_FOLDER.test(x.title)
-    );
-
-    if (!bookmarksBar) {
-      console.error(`Was expecting a folder called '${options.ROOT_FOLDER}'`);
+    // Get the bookmarks bar directly - no longer requires "Stitch" folder
+    const bookmarksBar = items[0];
+    
+    if (!bookmarksBar || !bookmarksBar.children) {
+      console.error("No bookmarks found");
       return;
     }
-
-    // Separate root bookmarks (bookmarks at root level) from folders
+    
     const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
     const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
 
-    // Create root column with title "/" for root-level bookmarks
-    const rootColumn = {
-      title: "/",
-      children: [],
-    };
-
-    // Add root-level bookmarks to the root column
+    // Create root column for bookmarks at the top level
+    const rootColumn = { title: "/", id: bookmarksBar.id, children: [] };
     rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
+    if (rootColumn.children.length > 0) {
+      columns.push(rootColumn);
+    }
 
-    // Add root column to columns array
-    columns.push(rootColumn);
-
-    // Process each subfolder as a column
+    // Process each folder as a column
     rootFolders.forEach((node) => {
-      const column = {
-        title: node.title,
-        children: [],
-      };
-
+      const column = { title: node.title, id: node.id, children: [] };
       visit(column, node);
-
       columns.push(column);
     });
+
+    // If no columns were created, try to get bookmarks from other folders
+    if (columns.length === 0) {
+      const allFolders = items[0].children.filter((n) => !!n.children);
+      allFolders.forEach((node) => {
+        const column = { title: node.title, id: node.id, children: [] };
+        visit(column, node);
+        if (column.children.length > 0) {
+          columns.push(column);
+        }
+      });
+    }
 
     currentColumns = columns;
     updateVisitCounts();
@@ -208,24 +178,19 @@ const visit = (column, node, path = []) => {
 const addBookmark = (column, node, path = []) => {
   if (!node.url || node.url.startsWith("javascript:")) return;
   const isSeparator = options.SEPARATORS.includes(node.title) || node.type === "separator";
-  const faviconUrl = getFaviconUrl(node.url);
   column.children.push({
     title: node.title,
     url: node.url,
     path: path,
     isSeparator,
-    faviconUrl,
     dateAdded: node.dateAdded,
     id: node.id,
   });
 };
 
-function updateVisitCounts(callback) {
+function updateVisitCounts() {
   const historyAPI = typeof browser !== "undefined" ? browser.history : chrome.history;
-  if (!historyAPI) {
-    if (callback) callback();
-    return;
-  }
+  if (!historyAPI) return;
 
   const doSearch = () => {
     try {
@@ -235,11 +200,8 @@ function updateVisitCounts(callback) {
           const normalizedUrl = normalizeUrl(item.url);
           bookmarkVisitCounts[normalizedUrl] = (bookmarkVisitCounts[normalizedUrl] || 0) + item.visitCount;
         });
-        if (callback) callback();
       });
-    } catch (e) {
-      if (callback) callback();
-    }
+    } catch (e) {}
   };
 
   if (typeof requestIdleCallback === 'function') {
@@ -416,138 +378,6 @@ document.addEventListener("DOMContentLoaded", function() {
   const CUSTOM_TITLE_KEY = "customTitle";
   const DEFAULT_TITLE = "Hello, Stitch";
   const THEME_KEY = "selectedTheme";
-  const FONT_KEY = "selectedFont";
-
-  // Settings Modal Functionality
-  const settingsModal = document.getElementById("settings-modal");
-  const settingsButton = document.getElementById("settings-button");
-  const settingsClose = document.getElementById("settings-close");
-  const settingsSave = document.getElementById("settings-save");
-  const settingsTitleInput = document.getElementById("settings-title-input");
-  const settingsSortSelect = document.getElementById("settings-sort-select");
-  
-  // Settings modal - Export/Import buttons
-  const settingsExportBtn = document.getElementById("settings-export-button");
-  const settingsImportBtn = document.getElementById("settings-import-button");
-  const settingsImportFile = document.getElementById("settings-import-file");
-
-  // Open settings modal
-  if (settingsButton) {
-    settingsButton.addEventListener("click", function() {
-      // Load current settings into the modal
-      settingsTitleInput.value = localStorage.getItem(CUSTOM_TITLE_KEY) || DEFAULT_TITLE;
-      
-      // Load theme selection
-      const savedTheme = localStorage.getItem(THEME_KEY) || "default";
-      document.querySelectorAll('input[name="theme"]').forEach(function(radio) {
-        radio.checked = radio.value === savedTheme;
-      });
-      
-      // Load font selection
-      const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
-      document.querySelectorAll('input[name="font"]').forEach(function(radio) {
-        radio.checked = radio.value === savedFont;
-      });
-      
-      // Load sort preference
-      const savedSort = localStorage.getItem(SORT_PREFERENCE_KEY) || "frequency";
-      settingsSortSelect.value = savedSort;
-      
-      settingsModal.classList.add("active");
-    });
-  }
-
-  // Close settings modal
-  if (settingsClose) {
-    settingsClose.addEventListener("click", function() {
-      settingsModal.classList.remove("active");
-    });
-  }
-
-  // Close settings modal when clicking outside
-  if (settingsModal) {
-    settingsModal.addEventListener("click", function(e) {
-      if (e.target === settingsModal) {
-        settingsModal.classList.remove("active");
-      }
-    });
-  }
-
-  // Save Settings button
-  if (settingsSave) {
-    settingsSave.addEventListener("click", function() {
-      // Save custom title
-      const newTitle = settingsTitleInput.value.trim() || DEFAULT_TITLE;
-      localStorage.setItem(CUSTOM_TITLE_KEY, newTitle);
-      renderTitle(newTitle);
-      
-      // Save theme
-      const selectedTheme = document.querySelector('input[name="theme"]:checked');
-      if (selectedTheme) {
-        applyTheme(selectedTheme.value);
-      }
-      
-      // Save font
-      const selectedFont = document.querySelector('input[name="font"]:checked');
-      if (selectedFont) {
-        applyFont(selectedFont.value);
-      }
-      
-      // Save sort preference
-      const sortPref = settingsSortSelect.value;
-      localStorage.setItem(SORT_PREFERENCE_KEY, sortPref);
-      updateSortButton();
-      renderCurrent();
-      
-      // Close modal
-      settingsModal.classList.remove("active");
-      
-      // Show feedback
-      alert("Settings saved successfully!");
-    });
-  }
-
-  // Settings modal - Export button
-  if (settingsExportBtn) {
-    settingsExportBtn.addEventListener("click", function() {
-      exportBookmarksToFile();
-    });
-  }
-
-  // Settings modal - Import button
-  if (settingsImportBtn) {
-    settingsImportBtn.addEventListener("click", function() {
-      settingsImportFile.click();
-    });
-  }
-
-  // Settings modal - Import file change
-  if (settingsImportFile) {
-    settingsImportFile.addEventListener("change", function(e) {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function() {
-        importFromJson(reader.result);
-        e.target.value = null;
-        settingsModal.classList.remove("active");
-      };
-      reader.readAsText(file);
-    });
-  }
-
-  // Font dropdown functionality
-  function applyFont(fontName) {
-    document.body.classList.remove("font-buka-bird", "font-fredoka");
-    if (fontName && fontName !== "buka-bird") {
-      document.body.classList.add("font-" + fontName);
-    }
-    localStorage.setItem(FONT_KEY, fontName || "buka-bird");
-  }
-
-  // Load saved font
-  const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
-  applyFont(savedFont);
 
   function renderTitle(titleText) {
     if (!welcomeElement) return;
@@ -561,8 +391,9 @@ document.addEventListener("DOMContentLoaded", function() {
     return localStorage.getItem(CUSTOM_TITLE_KEY) || DEFAULT_TITLE;
   }
 
-  // Title will be rendered after bookmarks load (in chrome.bookmarks.getTree callback)
-  // This ensures title appears together with bookmarks, not before
+  if (welcomeElement) {
+    renderTitle(loadCustomTitle());
+  }
 
   if (welcomeElement) {
     welcomeElement.addEventListener("click", function() {
@@ -613,6 +444,16 @@ document.addEventListener("DOMContentLoaded", function() {
   const savedTheme = localStorage.getItem(THEME_KEY) || "default";
   applyTheme(savedTheme);
 
+  // Theme dropdown change handler
+  const themeSelect = document.getElementById("theme-select");
+  if (themeSelect) {
+    themeSelect.value = savedTheme;
+    themeSelect.addEventListener("change", function() {
+      applyTheme(this.value);
+    });
+  }
+
+  document.body.style.background = options.BACKGROUND;
   updateTimestamp();
 
   const searchInput = document.getElementById("search-input");
@@ -757,30 +598,18 @@ function filterBookmarks() {
 function filterBy(category) {
   isShowingPins = false;
   const cat = category.toLowerCase();
-  
-  // Find the column that matches the folder name directly
-  const matchingColumn = columns.find(function(col) { 
-    return col.title.toLowerCase() === cat; 
-  });
-  
-  if (matchingColumn) {
-    // Show only the selected folder's column
-    currentColumns = [matchingColumn];
-  } else {
-    // Fallback: filter bookmarks that have this category in their path
-    const filteredColumns = columns
-      .map(function(col) {
-        return {
-          ...col,
-          children: col.children.filter(function(bm) {
-            return (bm.path || []).map(function(s) { return s.toLowerCase(); }).indexOf(cat) !== -1;
-          }),
-        };
-      })
-      .filter(function(col) { return col.children.length > 0; });
-    currentColumns = filteredColumns;
-  }
-  
+  const filteredColumns = columns
+    .map(function(col) {
+      return {
+        ...col,
+        children: col.children.filter(function(bm) {
+          return (bm.path || []).map(function(s) { return s.toLowerCase(); }).indexOf(cat) !== -1;
+        }),
+      };
+    })
+    .filter(function(col) { return col.children.length > 0; });
+
+  currentColumns = filteredColumns;
   clearMultiSelect();
   renderCurrent();
 }
@@ -872,27 +701,22 @@ function generateFilterButtons(folders) {
     return btn;
   }
 
-  function renderFolder(folder, depth = 0) {
+  function renderFolder(folder) {
     if (folder.children && folder.children.length) {
       const details = document.createElement("details");
-      details.setAttribute("data-depth", depth);
       const summary = document.createElement("summary");
       summary.textContent = folder.title;
       summary.className = "filter-folder-summary";
-      // Add data-depth attribute for CSS-based indentation
-      summary.setAttribute("data-depth", depth);
       details.appendChild(summary);
 
       folder.children.filter(function(child) { return child.children && child.children.length; }).forEach(function(child) {
-        details.appendChild(renderFolder(child, depth + 1));
+        details.appendChild(renderFolder(child));
       });
 
       const button = makeBtn({
         text: "Show \"" + folder.title + "\"",
         clickHandler: function() { filterBy(folder.title.toLowerCase()); updateCloseAllVisibility(); }
       });
-      // Add data-depth attribute to filter-button for indentation
-      button.setAttribute("data-depth", depth);
       details.appendChild(button);
       return details;
     }
@@ -904,13 +728,19 @@ function generateFilterButtons(folders) {
     if (rendered) filterButtonsContainer.appendChild(rendered);
   });
 
-  const resetButton = makeBtn({ text: "🔄 Reset", clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
-  const closeAllBtn = makeBtn({ id: "close-all-btn", text: "❌ Close All", title: "Collapse all folders", extraClasses: ["close-all-btn"], clickHandler: function() { document.querySelectorAll(".filter-buttons details[open]").forEach(function(d) { d.open = false; }); updateCloseAllVisibility(); } });
-  const pinnedButton = makeBtn({ id: "filter-pinned", text: "📌 Pinned", title: "Show only pinned bookmarks", clickHandler: function() { filterPinned(); updateCloseAllVisibility(); } });
-  const clearPinsButton = makeBtn({ id: "clear-pins", text: "🗑️ Clear Pins", title: "Remove all pins", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
-  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Work Mode", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
+  const resetButton = makeBtn({ text: "Reset", clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
+  const closeAllBtn = makeBtn({ id: "close-all-btn", text: "Close All", title: "Collapse all folders", extraClasses: ["close-all-btn"], clickHandler: function() { document.querySelectorAll(".filter-buttons details[open]").forEach(function(d) { d.open = false; }); updateCloseAllVisibility(); } });
+  const mostVisitedButton = makeBtn({ id: "filter-most-visited", text: "Most Visited", clickHandler: function() { filterMostVisited(); updateCloseAllVisibility(); } });
+  const pinnedButton = makeBtn({ id: "filter-pinned", text: "Pinned", title: "Show only pinned bookmarks", clickHandler: function() { filterPinned(); updateCloseAllVisibility(); } });
+  const clearPinsButton = makeBtn({ id: "clear-pins", text: "Clear Pins", title: "Remove all pins", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
+  const jobsHoursButton = makeBtn({ id: "filter-jobs-hours", text: "Jobs Hours", clickHandler: function() { filterJobsOrMostVisited(); updateCloseAllVisibility(); } });
+  const workModeButton = makeBtn({ id: "filter-work-mode", text: "Work Mode: OFF", clickHandler: toggleWorkMode });
+  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "Configure Work Mode", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
+  const sortByFrequencyBtn = makeBtn({ id: "sort-frequency", text: "Sort: Frequency", title: "Sort by most visited", clickHandler: function() { setSortPreference("frequency"); } });
+  const sortByDateBtn = makeBtn({ id: "sort-date", text: "Sort: Date Added", title: "Sort by newest first", clickHandler: function() { setSortPreference("date"); } });
+  const sortAlphabeticalBtn = makeBtn({ id: "sort-alphabetical", text: "Sort: A-Z", title: "Sort alphabetically", clickHandler: function() { setSortPreference("alphabetical"); } });
 
-  [configureWorkModeButton, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) { filterButtonsContainer.appendChild(btn); });
+  [workModeButton, configureWorkModeButton, jobsHoursButton, mostVisitedButton, sortByFrequencyBtn, sortByDateBtn, sortAlphabeticalBtn, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) { filterButtonsContainer.appendChild(btn); });
 
   updateCloseAllVisibility();
   updateClearPinsVisibility();
@@ -936,7 +766,6 @@ function updateCloseAllVisibility() {
 function updateClearPinsVisibility() {
   const clearPinsBtn = document.getElementById("clear-pins");
   if (!clearPinsBtn) return;
-  // Show the button only when there are pinned bookmarks
   clearPinsBtn.style.display = pinnedSet.size > 0 ? "inline-block" : "none";
 }
 
@@ -1071,22 +900,10 @@ function applyWorkModeFilter() {
 function autoApplyWorkMode() {
   const workModeFolders = JSON.parse(localStorage.getItem(WORK_MODE_KEY) || "[]");
   const workModeEnabled = JSON.parse(localStorage.getItem("workModeEnabled") || "false");
-  
-  // Use configurable work hours from utils.js
-  const withinWorkHours = typeof isWithinWorkHours === "function" ? isWithinWorkHours() : false;
-  
   if (workModeEnabled && workModeFolders.length) {
     applyWorkModeFilter();
-  } else if (withinWorkHours) {
-    // Apply work mode during configured work hours if folders are configured
-    if (workModeFolders.length) {
-      applyWorkModeFilter();
-    } else {
-      // No folders configured, just show normal view
-      currentColumns = columns;
-      renderCurrent();
-      document.body.classList.remove("jobs-hours-active");
-    }
+  } else if (isESTJobsTimeAndWorkday()) {
+    filterJobsOnly();
   } else {
     currentColumns = columns;
     renderCurrent();
@@ -1097,15 +914,7 @@ function autoApplyWorkMode() {
 function updateWorkModeButton() {
   const btn = document.getElementById("filter-work-mode");
   const enabled = JSON.parse(localStorage.getItem("workModeEnabled") || "false");
-  if (btn) btn.textContent = enabled ? "⚙️ Work Mode: ON" : "⚙️ Work Mode: OFF";
-  
-  // Show/hide work mode dependent buttons based on work mode state
-  const workModeDependentBtns = document.querySelectorAll(".work-mode-dependent");
-  workModeDependentBtns.forEach(function(button) {
-    if (button) {
-      button.style.display = enabled ? "inline-block" : "none";
-    }
-  });
+  if (btn) btn.textContent = enabled ? "Work Mode: ON" : "Work Mode: OFF";
 }
 
 function updateSortButton() {
@@ -1134,168 +943,3 @@ function toggleWorkMode() {
   updateWorkModeButton();
   autoApplyWorkMode();
 }
-
-// Check work mode every minute to automatically apply during configured hours
-setInterval(function() {
-  const workModeEnabled = JSON.parse(localStorage.getItem("workModeEnabled") || "false");
-  const workModeFolders = JSON.parse(localStorage.getItem(WORK_MODE_KEY) || "[]");
-  
-  // If work mode is manually ON or we have folders configured for auto mode
-  if (workModeEnabled || workModeFolders.length > 0) {
-    autoApplyWorkMode();
-  }
-}, 60000); // Check every 60 seconds
-
-// ===========================================
-// SETTINGS MODAL FUNCTIONALITY
-// ===========================================
-function initSettingsModal() {
-  const settingsModal = document.getElementById("settings-modal");
-  const settingsButton = document.getElementById("settings-button");
-  const settingsClose = document.getElementById("settings-close");
-  const settingsSave = document.getElementById("settings-save");
-  const settingsTitleInput = document.getElementById("settings-title-input");
-  const themeRadios = document.querySelectorAll('input[name="theme"]');
-  const fontRadios = document.querySelectorAll('input[name="font"]');
-  const sortSelect = document.getElementById("settings-sort-select");
-
-  if (!settingsModal || !settingsButton) return;
-
-  // Open modal
-  settingsButton.addEventListener("click", function() {
-    loadSettingsValues();
-    settingsModal.classList.add("active");
-  });
-
-  // Close modal
-  if (settingsClose) {
-    settingsClose.addEventListener("click", function() {
-      settingsModal.classList.remove("active");
-    });
-  }
-
-  // Close on backdrop click
-  settingsModal.addEventListener("click", function(e) {
-    if (e.target === settingsModal) {
-      settingsModal.classList.remove("active");
-    }
-  });
-
-  // Close on Escape key
-  document.addEventListener("keydown", function(e) {
-    if (e.key === "Escape" && settingsModal.classList.contains("active")) {
-      settingsModal.classList.remove("active");
-    }
-  });
-
-  // Save button handler
-  if (settingsSave) {
-    settingsSave.addEventListener("click", function() {
-      // Save custom title
-      const titleInput = document.getElementById("settings-title-input");
-      if (titleInput) {
-        const newTitle = titleInput.value.trim() || "Hello, Stitch";
-        localStorage.setItem("customTitle", newTitle);
-        // Update the title in the header if it exists
-        const welcomeElement = document.getElementById("welcome");
-        if (welcomeElement) {
-          welcomeElement.innerHTML = newTitle
-            .split("")
-            .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
-            .join("");
-        }
-      }
-
-      // Save theme
-      const selectedTheme = document.querySelector('input[name="theme"]:checked');
-      if (selectedTheme) {
-        applyTheme(selectedTheme.value);
-        // Also update the header dropdown
-        const headerThemeSelect = document.getElementById("theme-select");
-        if (headerThemeSelect) headerThemeSelect.value = selectedTheme.value;
-      }
-
-      // Save font
-      const selectedFont = document.querySelector('input[name="font"]:checked');
-      if (selectedFont) {
-        applyFont(selectedFont.value);
-        // Also update the header dropdown
-        const headerFontSelect = document.getElementById("font-select");
-        if (headerFontSelect) headerFontSelect.value = selectedFont.value;
-      }
-
-      // Save sort preference
-      const settingsSortSelect = document.getElementById("settings-sort-select");
-      if (settingsSortSelect) {
-        setSortPreference(settingsSortSelect.value);
-        // Also update the header dropdown
-        const headerSortSelect = document.getElementById("sort-select");
-        if (headerSortSelect) headerSortSelect.value = settingsSortSelect.value;
-      }
-
-      // Close the modal
-      settingsModal.classList.remove("active");
-    });
-  }
-
-  // Theme radio buttons - live preview (apply immediately but don't save until Save is clicked)
-  themeRadios.forEach(function(radio) {
-    radio.addEventListener("change", function() {
-      if (this.checked) {
-        applyTheme(this.value);
-      }
-    });
-  });
-
-  // Font radio buttons - live preview (apply immediately but don't save until Save is clicked)
-  fontRadios.forEach(function(radio) {
-    radio.addEventListener("change", function() {
-      if (this.checked) {
-        applyFont(this.value);
-      }
-    });
-  });
-
-  // Sort select - live preview (apply immediately but don't save until Save is clicked)
-  if (sortSelect) {
-    sortSelect.addEventListener("change", function() {
-      setSortPreference(this.value);
-    });
-  }
-}
-
-function loadSettingsValues() {
-  const THEME_KEY = "selectedTheme";
-  const FONT_KEY = "selectedFont";
-  const SORT_KEY = "bookmarkSortPreference";
-  const CUSTOM_TITLE_KEY = "customTitle";
-
-  // Load custom title
-  const savedTitle = localStorage.getItem(CUSTOM_TITLE_KEY) || "Hello, Stitch";
-  const titleInput = document.getElementById("settings-title-input");
-  if (titleInput) {
-    titleInput.value = savedTitle;
-  }
-
-  // Load theme
-  const savedTheme = localStorage.getItem(THEME_KEY) || "default";
-  const themeRadio = document.querySelector('input[name="theme"][value="' + savedTheme + '"]');
-  if (themeRadio) themeRadio.checked = true;
-
-  // Load font
-  const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
-  const fontRadio = document.querySelector('input[name="font"][value="' + savedFont + '"]');
-  if (fontRadio) fontRadio.checked = true;
-
-  // Load sort preference
-  const sortSelect = document.getElementById("settings-sort-select");
-  if (sortSelect) {
-    const savedSort = localStorage.getItem(SORT_KEY) || "frequency";
-    sortSelect.value = savedSort;
-  }
-}
-
-// Initialize settings modal on DOM ready
-document.addEventListener("DOMContentLoaded", function() {
-  initSettingsModal();
-});

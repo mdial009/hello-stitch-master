@@ -1,938 +1,256 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Hello, Stitch</title>
-    <!-- Favicon for different devices -->
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="icons/web/icons8-stitch-color-16.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="icons/web/icons8-stitch-color-32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="48x48"
-      href="icons/web/icons8-stitch-color-48.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="64x64"
-      href="icons/web/icons8-stitch-color-64.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="192x192"
-      href="icons/web/icons8-stitch-color-192.png"
-    />
-
-    <!-- Apple Touch Icon -->
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="icons/web/icons8-stitch-color-192.png"
-    />
-
-    <!-- Manifest for Android -->
-    <link rel="manifest" href="icons/web/site.webmanifest" />
-
-    <script src="options.js"></script>
-    <script src="utils.js"></script>
-    <script src="render.js"></script>
-    <script src="script.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body {
-        background-color: #000000; /* Black */
-        color: #ffffff; /* White */
-        margin: 0;
-        font-family: "Roboto", sans-serif; /* Use the new font */
-        font-size: 14px;
-        line-height: 1.2rem;
-        cursor: default;
-        overflow: inherit; /* Hide vertical scrollbar */
-        transition: 0.2s background-color;
-      }
-
-      #container {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        justify-content: flex-start; /* Use all available space */
-        gap: 1rem;
-        padding: 1rem;
-        width: 100vw; /* Use full viewport width */
-        box-sizing: border-box;
-        min-height: 60vh;
-      }
-
-      .dynamic-column {
-        flex: 1 1 350px; /* Grow and shrink, base width 350px */
-        min-width: 260px;
-        max-width: 100%;
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        box-sizing: border-box;
-      }
-
-      /* Center the column and make it take up space if there's only one folder */
-      #container.single-folder {
-        justify-content: center; /* Center the folder */
-      }
-
-      #container.single-folder .dynamic-column {
-        flex-basis: 60vw; /* Take up 60% of viewport width, or adjust as needed */
-        max-width: 700px;
-        min-width: 320px;
-      }
-
-      #container.two-folders {
-        justify-content: center;
-      }
-
-      #container.two-folders .dynamic-column {
-        flex-basis: 40vw; /* Each column takes 40% of viewport width */
-        /*max-width: 600px; */
-        min-width: 320px;
-      }
-
-      /* Adjust column width for fewer columns */
-      #container.justify-center .dynamic-column {
-        flex-basis: 100%; /* Full width for a single column */
-        max-width: none;
-      }
-
-      /* Spread columns evenly when jobs-hours-active is set */
-      .jobs-hours-active #container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2em;
-        justify-content: center;
-        align-items: flex-start;
-      }
-      .jobs-hours-active .dynamic-column {
-        flex: 1 1 300px;
-        min-width: auto;
-        /*max-width: 350px;*/
-      }
-
-      h1 {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px; /* Increased font size */
-        line-height: 1.5rem; /* Adjusted line height */
-        text-transform: capitalize; /* Ensure the text transform matches */
-        margin-top: 0; /* Move content to the top */
-      }
-
-      #header {
-        text-align: center;
-        margin-top: 0.5em;
-      }
-
-      #welcome {
-        font-size: 2.2em;
-        font-weight: bold;
-        margin-bottom: 0.3em;
-      }
-
-      .stitch-theme {
-        font-weight: bold;
-        margin: 0 0.5px; /* Reduce horizontal space between letters */
-        letter-spacing: -1px; /* Pull letters closer together */
-      }
-
-      .stitch-theme.color0 {
-        color: #6ac5e0;
-      }
-      .stitch-theme.color1 {
-        color: #4f959d;
-      }
-      .stitch-theme.color2 {
-        color: #ff9900;
-      }
-      .stitch-theme.color3 {
-        color: #ff69b4;
-      }
-      .stitch-theme.color4 {
-        color: #ffd700;
-      }
-      .stitch-theme.color5 {
-        color: #32cd32;
-      }
-      .stitch-theme.color6 {
-        color: #00ced1;
-      }
-      .stitch-theme.color7 {
-        color: #8a2be2;
-      }
-
-      h2 {
-        font-size: 3rem; /* Increased font size for folder titles */
-        color: #6ac5e0; /* Light Blue */
-        display: inline-block; /* Make the border adjust based on text length */
-        margin: 0.5rem 0; /* Add margin to avoid overlapping */
-        word-wrap: break-word; /* Handle long text */
-      }
-
-      h3 {
-        font-size: 1.5rem; /* Font size for subfolder titles */
-        color: #4f959d; /* Teal */
-        display: inline-block; /* Make the border adjust based on text length */
-        margin: 0.5rem 0; /* Add margin to avoid overlapping */
-        word-wrap: break-word; /* Handle long text */
-        cursor: pointer; /* Indicate that the element is clickable */
-      }
-
-      a {
-        text-decoration: none;
-        color: #ff9900; /* Red */
-        font-weight: lighter;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3em;
-        margin: 0.5rem 0; /* Add margin to avoid overlapping */
-        word-wrap: break-word; /* Handle long text */
-      }
-
-      .separator {
-        line-height: 0.75rem;
-      }
-
-      a:hover {
-        color: #ff0000; /* White */
-        font-weight: bold;
-      }
-
-      ul {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        flex-grow: 1; /* Allow the list to grow and fill the container */
-        /*overflow-y: auto; /* Enable vertical scrolling */
-      }
-
-      li {
-        display: flex; /* Use flexbox for list items */
-        flex-direction: column; /* Arrange items vertically */
-        flex-grow: 1; /* Allow list items to grow */
-        align-items: flex-start; /* Align items to the start */
-      }
-
-      div.column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        flex: 1 1 300px;
-        min-width: 220px;
-        height: auto;
-        /*overflow-y: auto;*/
-        background-color: rgba(255, 255, 255, 0);
-        border-radius: 8px;
-        padding: 1rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-      }
-
-      .favicon {
-        width: 16px;
-        height: 16px;
-        margin-right: 4px;
-      }
-
-      .url {
-        font-size: 12px;
-        color: #888888; /* Grey */
-        margin-top: 1px; /* Reduce the space between the bookmark and the URL */
-        white-space: nowrap; /* Prevent text from wrapping */
-        overflow: hidden; /* Hide overflow text */
-        text-overflow: ellipsis; /* Add ellipsis for overflow text */
-        max-width: 200px; /* Limit the maximum width of the URL container */
-        text-transform: none; /* Ensure the text is not transformed */
-        color: #888888;
-        margin-top: 1px;
-        white-space: normal; /* Allow wrapping */
-        overflow-wrap: anywhere; /* Break long URLs */
-        max-width: 100%; /* Use full width of the column */
-        text-overflow: unset;
-      }
-
-      #header {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem; /* Add margin to move the header up */
-      }
-
-      #timestamp {
-        display: flex;
-        gap: 0.2rem;
-        font-family: "Roboto", sans-serif; /* Match the font of the Hello, Stitch text */
-        font-size: 24px; /* Increased font size */
-        line-height: 1.5rem; /* Adjusted line height */
-        text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
-      }
-
-      #date {
-        color: #ffd700; /* Gold */
-      }
-
-      #hours {
-        color: #32cd32; /* Lime Green */
-      }
-
-      #minutes {
-        color: #00ced1; /* Dark Turquoise */
-      }
-
-      #seconds {
-        color: #ff69b4; /* Hot Pink */
-      }
-
-      #ampm {
-        color: #8a2be2; /* Blue Violet */
-      }
-
-      #day {
-        color: #ffffff; /* White */
-        font-family: "Roboto", sans-serif; /* Match the font of the Hello, Stitch text */
-        font-size: 20px; /* Adjusted font size */
-        line-height: 1.5rem; /* Adjusted line height */
-        text-transform: capitalize; /* Match the text transform of the Hello, Stitch text */
-      }
-
-      #search-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 1rem; /* Add margin below the search bar */
-      }
-
-      .search-bar {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem; /* Space between the search bar and buttons */
-      }
-
-      #search-input {
-        width: 300px; /* Adjust width as needed */
-        padding: 0.5rem;
-        font-size: 16px;
-        border: 1px solid #ff9900; /* Orange border */
-        border-radius: 4px;
-        background-color: rgba(255, 255, 255, 0); /* Transparent background */
-        color: #ff9900; /* Match the border color */
-      }
-
-      #search-input::placeholder {
-        color: #ff9900; /* Match the border color */
-      }
-
-      .search-button {
-        padding: 0.4rem 0.8rem;
-        font-size: 14px;
-        border: 1px solid #ff9900; /* Orange border */
-        border-radius: 4px;
-        background-color: #000000; /* Black background */
-        color: #ffffff; /* White text */
-        cursor: pointer;
-        transition: background-color 0.2s;
-      }
-      .search-button:hover {
-        background-color: #ff9900; /* Orange background on hover */
-        color: #000000; /* Black text on hover */
-      }
-      .total-number-button {
-        padding: 0.4rem 0.8rem;
-        font-size: 14px;
-        border: 1px solid #ff9900; /* Orange border */
-        border-radius: 4px;
-        background-color: #000000; /* Black background */
-        color: #ffffff; /* White text */
-        transition: background-color 0.2s;
-      }
-
-      .total-number-button:hover {
-        /*background-color: #ff9900; /* Orange background on hover */
-        color: #000000; /* Black text on hover */
-      }
-
-      .filter-buttons {
-        display: flex;
-        flex-direction: row;
-        gap: 0.5em;
-        margin-top: 0.5em;
-        align-items: flex-start;
-        flex-wrap: wrap; /* Allow wrapping on small screens */
-      }
-
-      .filter-buttons details,
-      .filter-buttons button.filter-button {
-        margin-left: 0;
-        margin-bottom: 0;
-      }
-
-      .filter-folder-summary {
-        cursor: pointer;
-        font-weight: bold;
-        color: #ff9900;
-        padding: 0.2em 0.4em;
-        border-radius: 2px;
-        background: #222;
-        margin-bottom: 0.2em;
-      }
-      .filter-folder-summary:hover {
-        background: #ff9900;
-        color: #222;
-      }
-
-      .filter-buttons details details,
-      .filter-buttons details details details,
-      .filter-buttons details details details details {
-        margin-left: 0;
-      }
-
-      .chatgpt-btn {
-        background-color: #10a37f;
-        color: #fff;
-        border-color: #10a37f;
-      }
-      .chatgpt-btn:hover {
-        background-color: #fff;
-        color: #10a37f;
-      }
-
-      .reddit-btn {
-        background-color: #ff4500;
-        color: #fff;
-        border-color: #ff4500;
-      }
-      .reddit-btn:hover {
-        background-color: #fff;
-        color: #ff4500;
-      }
-
-      .twitch-btn {
-        background-color: #9147ff;
-        color: #fff;
-        border-color: #9147ff;
-      }
-      .twitch-btn:hover {
-        background-color: #fff;
-        color: #9147ff;
-      }
-
-      .search-button.youtube-btn {
-        background: #ff0000;
-        color: #fff;
-        border: none;
-        margin-left: 0.5em;
-      }
-      .search-button.youtube-btn:hover {
-        background: #cc0000;
-      }
-
-      .url-container {
-        display: flex;
-        align-items: center;
-        /*gap: 0.5em;*/
-        width: 100%;
-      }
-
-      .copy-url-btn {
-        background: #222;
-        color: #ff9900;
-        border: 1px solid #ff9900;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 1em;
-        padding: 2px 6px;
-        margin-left: 4px;
-        transition: background 0.2s, color 0.2s;
-      }
-      .copy-url-btn:hover {
-        background: #ff9900;
-        color: #222;
-      }
-
-      details > summary.folder-title {
-        font-size: 1.1em;
-        font-weight: bold;
-        outline: none;
-        user-select: none;
-      }
-      details[open] > summary.folder-title {
-        color: #ff9900;
-      }
-      details ul {
-        margin-left: 0;
-        padding-left: 0;
-        border-left: none;
-      }
-
-      .filter-buttons details {
-        margin-bottom: 0.2em;
-        margin-left: 0; /* Top-level has no indent */
-      }
-
-      .filter-buttons details details {
-        margin-left: 1em; /* 1st nested level */
-      }
-      .filter-buttons details details details {
-        margin-left: 2em; /* 2nd nested level */
-      }
-      .filter-buttons details details details details {
-        margin-left: 3em; /* 3rd nested level */
-      }
-      /* Add more if you expect deeper nesting */
-
-      .filter-buttons details {
-        margin-bottom: 0.2em;
-      }
-      .filter-folder-summary {
-        cursor: pointer;
-        font-weight: bold;
-        color: #ff9900;
-        padding: 0.2em 0.4em;
-        border-radius: 2px;
-        background: #222;
-        margin-bottom: 0.2em;
-      }
-      .filter-folder-summary:hover {
-        background: #ff9900;
-        color: #222;
-      }
-      .filter-buttons button.filter-button {
-        margin: 0 0.15em 0.15em 0; /* Indent child buttons */
-      }
-
-      /* Style for the Close All button */
-      .close-all-btn {
-        background: #222;
-        color: #ff9900;
-        border: 1.5px solid #ff9900;
-        border-radius: 5px;
-        margin-left: 0.5em;
-        transition: background 0.2s, color 0.2s;
-      }
-      .close-all-btn:hover,
-      .close-all-btn:focus {
-        background: #ff9900;
-        color: #222;
-      }
-
-      #close-all-btn {
-        display: none;
-      }
-
-      .filter-button {
-        padding: 0.4rem 1.1rem;
-        font-size: 15px;
-        border: 1.5px solid #ff9900;
-        border-radius: 5px;
-        background: #181818;
-        color: #ff9900;
-        cursor: pointer;
-        font-weight: bold;
-        letter-spacing: 0.03em;
-        transition: background 0.2s, color 0.2s, border-color 0.2s,
-          box-shadow 0.2s;
-        outline: none;
-        margin: 0 0.15em 0.15em 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        display: inline-block;
-      }
-
-      .filter-button:hover,
-      .filter-button:focus {
-        background: #ff9900;
-        color: #181818;
-        border-color: #ff9900;
-        box-shadow: 0 4px 12px rgba(255, 153, 0, 0.15);
-      }
-
-      @media (max-width: 768px) {
-        .dynamic-column {
-          flex-basis: 100%; /* Full width for smaller screens */
-        }
-
-        #search-container {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .search-button {
-          width: 100%; /* Full width for buttons on smaller screens */
-        }
-      }
-
-      .column-summary {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #ff9900;
-        cursor: pointer;
-        padding: 0.3em 0.5em;
-        border-radius: 4px;
-        background: #181818;
-        /*margin-bottom: 0.1em; */
-        transition: background 0.2s, color 0.2s;
-      }
-      .column-summary:hover {
-        background: #ff9900;
-        color: #181818;
-      }
-
-      .folder-name,
-      .column-summary {
-        font-size: 1.5rem; /* or your preferred size */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-      }
-
-      .folder-name span.stitch-theme,
-      .column-summary span.stitch-theme {
-        margin: 0 0.5px;
-        letter-spacing: -1px;
-      }
-
-      #go-to-top {
-        display: none;
-        position: fixed;
-        bottom: 32px;
-        right: 32px;
-        z-index: 999;
-        background: #181818;
-        color: #ff9900;
-        border: 2px solid #ff9900;
-        border-radius: 50px;
-        padding: 0.7em 1.2em;
-        font-size: 1.2em;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        transition: background 0.2s, color 0.2s;
-      }
-      #go-to-top:hover {
-        background: #ff9900;
-        color: #181818;
-      }
-
-      .delete-bookmark-btn {
-        background: none;
-        border: none;
-        color: #ff5555;
-        cursor: pointer;
-        /*margin-left: 0.2em;*/
-        font-size: 1em;
-        transition: color 0.2s;
-      }
-      .delete-bookmark-btn:hover {
-        color: #ff0000;
-      }
-
-      .edit-bookmark-btn {
-        background: none;
-        border: none;
-        color: #ffd700;
-        cursor: pointer;
-        /*margin-left: 0.5em;*/
-        font-size: 1em;
-        transition: color 0.2s;
-      }
-      .edit-bookmark-btn:hover {
-        color: #ff9900;
-      }
-
-      #edit-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-      }
-      #edit-modal.active {
-        display: flex;
-      }
-      #edit-form {
-        background: #181818;
-        color: #fff;
-        padding: 2em;
-        border-radius: 8px;
-        min-width: 320px;
-        display: flex;
-        flex-direction: column;
-        gap: 1em;
-        box-shadow: 0 4px 24px #000a;
-      }
-      #edit-form input {
-        width: 100%;
-        padding: 0.5em;
-        margin-top: 0.2em;
-        background: #222;
-        border: 1px solid #444;
-        color: #fff;
-        border-radius: 4px;
-      }
-      #edit-cancel,
-      #edit-save {
-        padding: 0.5em 1.2em;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-      }
-      #edit-cancel {
-        background: #333;
-        color: #fff;
-      }
-      #edit-save {
-        background: #ff9900;
-        color: #181818;
-        font-weight: bold;
-      }
-
-      /* Themed Folder Dropdown */
-      #edit-folder {
-        width: 100%;
-        padding: 0.5em;
-        margin-top: 0.2em;
-        background: #222;
-        border: 1px solid #ff9900;
-        color: #ff9900;
-        border-radius: 4px;
-        font-size: 1em;
-        appearance: none;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
-
-      #edit-folder:focus {
-        border-color: #ffd700;
-        box-shadow: 0 0 0 2px #ffd70044;
-      }
-
-      #edit-folder option {
-        background: #181818;
-        color: #ff9900;
-      }
-
-      .new-badge {
-        background: #ff9900;
-        color: #181818;
-        font-size: 0.8em;
-        font-weight: bold;
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin-left: 8px;
-        letter-spacing: 1px;
-        white-space: nowrap;
-        vertical-align: middle;
-        display: inline-block;
-        animation: new-bounce 1s infinite alternate;
-      }
-      @keyframes new-bounce {
-        0% {
-          transform: scale(1);
-        }
-        100% {
-          transform: scale(1.15);
-        }
-      }
-
-      #workmode-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
-      }
-      #workmode-modal.active {
-        display: flex;
-      }
-      #workmode-form {
-        background: #23272e;
-        color: #ff9900;
-        padding: 2em 2.5em;
-        border-radius: 12px;
-        min-width: 320px;
-        max-width: 90vw;
-        max-height: 80vh;
-        overflow: auto;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-        display: flex;
-        flex-direction: column;
-        gap: 1.5em;
-      }
-      #workmode-form h2 {
-        margin-top: 0;
-        color: #ffd700;
-        font-size: 1.3em;
-        text-align: center;
-      }
-      #workmode-folder-list label {
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-        padding: 0.3em 0.5em;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background 0.15s;
-      }
-      #workmode-folder-list label:hover {
-        background: #181818;
-      }
-      #workmode-folder-list input[type="checkbox"] {
-        accent-color: #ff9900;
-        width: 1.1em;
-        height: 1.1em;
-      }
-      #workmode-form button {
-        background: #ff9900;
-        color: #181818;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5em 1.2em;
-        font-weight: bold;
-        cursor: pointer;
-        transition: background 0.15s;
-      }
-      #workmode-form button:hover {
-        background: #ffd700;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="header">
-      <h1 id="welcome"></h1>
-      <div id="timestamp">
-        <span id="date"></span> <span>-</span> <span id="hours"></span>:<span
-          id="minutes"
-        ></span
-        >:<span id="seconds"></span> <span id="ampm"></span>
-      </div>
-      <div id="day"></div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="description" content="A beautiful bookmarks manager for Chrome and Firefox with customizable themes, work mode, and quick access to your favorite sites." />
+  <title>Hello, Stitch</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/web/icons8-stitch-color-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/web/icons8-stitch-color-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/web/icons8-stitch-color-48.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/web/icons8-stitch-color-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/web/icons8-stitch-color-192.png" />
+  <script src="options.js" defer></script>
+  <script src="utils.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="render.js" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="loading-indicator">
+    <div class="spinner"></div>
+    <span class="loading-text">Loading bookmarks...</span>
+  </div>
+  <div id="header">
+    <h1 id="welcome"></h1>
+    <div id="timestamp">
+      <span id="date"></span> - <span id="hours"></span>:<span id="minutes"></span>:<span id="seconds"></span> <span id="ampm"></span>
     </div>
-    <div id="search-container">
-      <div class="search-bar">
-        <input
-          type="text"
-          id="search-input"
-          placeholder="Search bookmarks..."
-        />
-        <button class="search-button chatgpt-btn" id="chatgpt-button">
-          ChatGPT
-        </button>
-        <button class="search-button reddit-btn" id="reddit-button">
-          Reddit
-        </button>
-        <button class="search-button twitch-btn" id="twitch-button">
-          Twitch
-        </button>
-        <button class="search-button youtube-btn" id="youtube-button">
-          YouTube
-        </button>
-        <button class="total-number-button">
-          <span
-            id="total-bookmark-count"
-            style="margin-left: 0.1em; font-weight: bold; color: #ff9900"
-          ></span>
-        </button>
-      </div>
-      <div class="filter-buttons">
-        <!-- Filter buttons will be dynamically generated here -->
-      </div>
+    <div id="day"></div>
+  
+  <div id="search-container">
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search bookmarks..." />
+      <span id="total-bookmark-count"></span>
     </div>
-    <div id="container"></div>
-    <button id="go-to-top" title="Go to top">⬆ Top</button>
-    <div id="edit-modal">
-      <form id="edit-form">
-        <label>
-          Title:
-          <input type="text" id="edit-title" />
+    <div class="quick-links">
+      <button class="search-button chatgpt-btn" id="chatgpt-button" title="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
+      <button class="search-button grok-btn" id="grok-button" title="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>
+      <button class="search-button reddit-btn" id="reddit-button" title="Open Reddit" aria-label="Open Reddit"><span class="btn-icon">🤖</span> Reddit</button>
+      <button class="search-button twitch-btn" id="twitch-button" title="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
+      <button class="search-button youtube-btn" id="youtube-button" title="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
+    </div>
+    <div class="filter-buttons"></div>
+    <div class="import-export-buttons">
+      <button id="settings-button" class="small-button" title="Settings">⚙️ Settings</button>
+    </div>
+  
+  <div id="container"></div>
+  <button id="go-to-top">Top</button>
+  
+  <div id="edit-modal">
+    <form id="edit-form">
+      <label>Title: <input type="text" id="edit-title" /></label>
+      <label>URL: <input type="text" id="edit-url" /></label>
+      <label>Folder: <select id="edit-folder"></select></label>
+      <div class="modal-footer">
+        <button type="button" id="edit-cancel">Cancel</button>
+        <button type="submit" id="edit-save">Save</button>
+      </div>
+    </form>
+  </div>
+  
+  <div id="workmode-modal">
+    <form id="workmode-form">
+      <h2>Configure Work Mode</h2>
+      <div class="workmode-toggle-container">
+        <label class="workmode-toggle">
+          <input type="checkbox" id="workmode-enabled-toggle" />
+          <span class="toggle-slider"></span>
         </label>
-        <label>
-          URL:
-          <input type="text" id="edit-url" />
-        </label>
-        <label>
-          Folder:
-          <select id="edit-folder"></select>
-        </label>
-        <div style="display: flex; gap: 1em; justify-content: flex-end">
-          <button type="button" id="edit-cancel">Cancel</button>
-          <button type="submit" id="edit-save">Save</button>
+        <span id="workmode-status-text">OFF</span>
+      </div>
+      <div class="workmode-section">
+        <h3>Work Hours (EST)</h3>
+        <div class="workhours-config">
+          <label>
+            Start Time:
+            <input type="time" id="workmode-start-time" value="08:00" />
+          </label>
+          <label>
+            End Time:
+            <input type="time" id="workmode-end-time" value="16:00" />
+          </label>
         </div>
-      </form>
-    </div>
-    <div
-      id="workmode-modal"
-      style="
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
-      "
-    >
-      <form
-        id="workmode-form"
-        style="
-          background: #181818;
-          color: #fff;
-          padding: 2em;
-          border-radius: 8px;
-          min-width: 320px;
-          max-width: 90vw;
-          max-height: 80vh;
-          overflow: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 1em;
-        "
-      >
-        <h2 style="margin-top: 0">Select Folders for Work Mode</h2>
-        <div
-          id="workmode-folder-list"
-          style="display: flex; flex-direction: column; gap: 0.5em"
-        ></div>
-        <div style="display: flex; gap: 1em; justify-content: flex-end">
-          <button type="button" id="workmode-cancel">Cancel</button>
-          <button type="submit" id="workmode-ok">OK</button>
+        <div class="workdays-config">
+          <label><input type="checkbox" id="workmode-mon" checked /> Mon</label>
+          <label><input type="checkbox" id="workmode-tue" checked /> Tue</label>
+          <label><input type="checkbox" id="workmode-wed" checked /> Wed</label>
+          <label><input type="checkbox" id="workmode-thu" checked /> Thu</label>
+          <label><input type="checkbox" id="workmode-fri" checked /> Fri</label>
+          <label><input type="checkbox" id="workmode-sat" /> Sat</label>
+          <label><input type="checkbox" id="workmode-sun" /> Sun</label>
         </div>
-      </form>
+        <p class="workmode-hint">Work mode will automatically turn ON during these hours.</p>
+      </div>
+      <div class="workmode-section">
+        <h3>Work Mode Folders</h3>
+        <div id="workmode-folder-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="workmode-cancel">Cancel</button>
+        <button type="submit" id="workmode-ok">OK</button>
+      </div>
+    </form>
+  </div>
+  
+  <div id="multi-open-bar">
+    <button id="multi-open-button">Open</button>
+    <button id="multi-close-button">Close</button>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div id="settings-modal">
+    <div class="settings-container">
+      <div class="settings-header">
+        <h2>⚙️ Settings</h2>
+        <button id="settings-close" class="settings-close-btn">&times;</button>
+      </div>
+      <div class="settings-content">
+        
+        <!-- Custom Title Section -->
+        <div class="settings-section">
+          <h3>📝 Custom Title</h3>
+          <input type="text" id="settings-title-input" class="settings-input" placeholder="Enter custom title..." />
+          <p class="settings-hint">Click on the title in the header to edit it directly.</p>
+        </div>
+        
+        <!-- Theme Selection -->
+        <div class="settings-section">
+          <h3>🎨 Theme</h3>
+          <div class="settings-grid">
+            <label class="settings-option">
+              <input type="radio" name="theme" value="default" />
+              <div class="theme-preview theme-preview-default"></div>
+              <span>Default</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="matrix" />
+              <div class="theme-preview theme-preview-matrix"></div>
+              <span>Matrix</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="ocean" />
+              <div class="theme-preview theme-preview-ocean"></div>
+              <span>Ocean</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="sunset" />
+              <div class="theme-preview theme-preview-sunset"></div>
+              <span>Sunset</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="forest" />
+              <div class="theme-preview theme-preview-forest"></div>
+              <span>Forest</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="midnight" />
+              <div class="theme-preview theme-preview-midnight"></div>
+              <span>Midnight</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="aurora" />
+              <div class="theme-preview theme-preview-aurora"></div>
+              <span>Aurora</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="rose" />
+              <div class="theme-preview theme-preview-rose"></div>
+              <span>Rose</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="lemon" />
+              <div class="theme-preview theme-preview-lemon"></div>
+              <span>Lemon</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="coral" />
+              <div class="theme-preview theme-preview-coral"></div>
+              <span>Coral</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="lavender" />
+              <div class="theme-preview theme-preview-lavender"></div>
+              <span>Lavender</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="nord" />
+              <div class="theme-preview theme-preview-nord"></div>
+              <span>Nord</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="dracula" />
+              <div class="theme-preview theme-preview-dracula"></div>
+              <span>Dracula</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="monokai" />
+              <div class="theme-preview theme-preview-monokai"></div>
+              <span>Monokai</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="cyberpunk" />
+              <div class="theme-preview theme-preview-cyberpunk"></div>
+              <span>Cyberpunk</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Font Selection -->
+        <div class="settings-section">
+          <h3>🔤 Font</h3>
+          <div class="settings-grid">
+            <label class="settings-option">
+              <input type="radio" name="font" value="buka-bird" />
+              <div class="font-preview font-preview-buka">Aa</div>
+              <span>Buka Bird</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="fredoka" />
+              <div class="font-preview font-preview-fredoka">Aa</div>
+              <span>Fredoka</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Sort Preference -->
+        <div class="settings-section">
+          <h3>📊 Default Sort</h3>
+          <select id="settings-sort-select" class="settings-select">
+            <option value="frequency">Most Visited</option>
+            <option value="date">Date Added</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+        </div>
+        
+        <!-- Import/Export Section -->
+        <div class="settings-section">
+          <h3>📥📤 Import / Export</h3>
+          <p class="settings-hint">Export your bookmarks to a JSON file or import from a previously exported file.</p>
+          <div class="settings-import-export-buttons">
+            <button id="settings-export-button" class="settings-button">📤 Export Bookmarks</button>
+            <button id="settings-import-button" class="settings-button">📥 Import Bookmarks</button>
+            <input type="file" id="settings-import-file" accept=".json" style="display:none" />
+          </div>
+        </div>
+        
+      </div>
+      <div class="settings-footer">
+        <button id="settings-save" class="settings-button">💾 Save Settings</button>
+      </div>
     </div>
-  </body>
+  </div>
+  
+</body>
 </html>
