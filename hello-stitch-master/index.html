@@ -144,6 +144,8 @@
             <input type="file" id="settings-import-file" accept=".json" style="display:none" />
           </div>
           <div class="settings-header-divider"></div>
+          <button id="settings-info-button" class="small-settings-btn" title="Features" data-tooltip="View features">ℹ️</button>
+          <div class="settings-header-divider"></div>
           <span class="settings-header-label">Sort:</span>
           <select id="settings-sort-select" class="settings-header-sort" data-tooltip="Sort bookmarks by">
             <option value="frequency">Most Visited</option>
@@ -242,6 +244,7 @@
               <span>Cyberpunk</span>
             </label>
           </div>
+          <button id="random-theme-button" class="settings-random-btn" title="Randomize theme">🎲 Random</button>
         </div>
         
 <!-- Font Selection -->
@@ -299,11 +302,169 @@
               <span>Playfair</span>
             </label>
           </div>
+          <button id="random-font-button" class="settings-random-btn" title="Randomize font">🎲 Random</button>
         </div>
-        
+
+        <!-- Font Size Selection -->
+        <div class="settings-section">
+          <h3>📏 Font Size</h3>
+          <div class="settings-grid font-size-grid">
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="14" />
+              <div class="font-size-preview font-size-14-preview">Aa</div>
+              <span>14px</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="16" />
+              <div class="font-size-preview font-size-16-preview">Aa</div>
+              <span>16px</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="18" />
+              <div class="font-size-preview font-size-18-preview">Aa</div>
+              <span>18px</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="20" />
+              <div class="font-size-preview font-size-20-preview">Aa</div>
+              <span>20px</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="22" />
+              <div class="font-size-preview font-size-22-preview">Aa</div>
+              <span>22px</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="fontSize" value="24" />
+              <div class="font-size-preview font-size-24-preview">Aa</div>
+              <span>24px</span>
+            </label>
+          </div>
+          <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
+        </div>
+
       </div>
       <div class="settings-footer">
         <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Features Info Modal -->
+  <div id="features-modal">
+    <div class="features-container">
+      <div class="features-header">
+        <h2>✨ Features</h2>
+        <button id="features-close" class="features-close-btn" data-tooltip="Close">&times;</button>
+      </div>
+      <div class="features-content">
+        <div class="features-grid">
+          <div class="feature-item">
+            <span class="feature-icon">🎨</span>
+            <div class="feature-text">
+              <h4>15+ Themes</h4>
+              <p>Customize with themes like Matrix, Ocean, Sunset, Forest, Midnight, Aurora, and more!</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🔤</span>
+            <div class="feature-text">
+              <h4>10 Font Options</h4>
+              <p>Choose from Buka Bird, Fredoka, Poppins, Roboto, and other fonts.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">💼</span>
+            <div class="feature-text">
+              <h4>Work Mode</h4>
+              <p>Configure work hours and filter to show only work-related bookmarks during those times.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📁</span>
+            <div class="feature-text">
+              <h4>Folder Filtering</h4>
+              <p>Filter bookmarks by folder, pin favorites, or show all bookmarks.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🏷️</span>
+            <div class="feature-text">
+              <h4>AI Auto-Tagging</h4>
+              <p>Bookmarks are automatically tagged based on categories like Development, Video, Social, and more.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📊</span>
+            <div class="feature-text">
+              <h4>Sorting Options</h4>
+              <p>Sort by most visited, date added, or alphabetically (A-Z).</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📌</span>
+            <div class="feature-text">
+              <h4>Pin Bookmarks</h4>
+              <p>Pin your favorite bookmarks to keep them at the top.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">✏️</span>
+            <div class="feature-text">
+              <h4>Edit & Delete</h4>
+              <p>Edit bookmark titles, URLs, and folders. Delete unwanted bookmarks.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📋</span>
+            <div class="feature-text">
+              <h4>Multi-Select</h4>
+              <p>Select multiple bookmarks and open them all at once with Ctrl+A.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🔍</span>
+            <div class="feature-text">
+              <h4>Search</h4>
+              <p>Quickly search through your bookmarks by title.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📥</span>
+            <div class="feature-text">
+              <h4>Import/Export</h4>
+              <p>Import bookmarks from JSON or export your bookmarks for backup.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📝</span>
+            <div class="feature-text">
+              <h4>Custom Title</h4>
+              <p>Personalize your new tab with a custom title that shows date and time.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🔗</span>
+            <div class="feature-text">
+              <h4>Quick Links</h4>
+              <p>Quick access buttons to ChatGPT, Grok, Reddit, Twitch, and YouTube.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📂</span>
+            <div class="feature-text">
+              <h4>Folder Collapse/Expand</h4>
+              <p>Collapse and expand folders to organize your view.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🔄</span>
+            <div class="feature-text">
+              <h4>Duplicate Detection</h4>
+              <p>Automatically detects and highlights duplicate bookmarks.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

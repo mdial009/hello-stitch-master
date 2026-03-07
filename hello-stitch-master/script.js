@@ -1,10 +1,13 @@
 const columns = [];
 let currentColumns = columns;
+let bookmarksLoaded = false; // Flag to prevent rendering before bookmarks are loaded
 const selectedBookmarks = new Set();
+window.selectedBookmarks = selectedBookmarks;
 let bookmarkVisitCounts = {};
 const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
 const PINS_KEY = "pinnedBookmarks";
 const TAGS_KEY = "bookmarkTags";
+const FONT_SIZE_KEY = "selectedFontSize";
 const pinnedSet = new Set(JSON.parse(localStorage.getItem(PINS_KEY) || "[]"));
 let isShowingPins = false;
 const tagsByUrl = JSON.parse(localStorage.getItem(TAGS_KEY) || "{}");
@@ -278,10 +281,12 @@ function updateDuplicates() {
 }
 
 chrome.bookmarks.getTree((items) => {
-  // Hide loading indicator and show main content
+  // Hide loading indicator and show main content after 2 seconds to ensure it's visible
   const loadingIndicator = document.getElementById("loading-indicator");
   if (loadingIndicator) {
-    loadingIndicator.classList.add("hidden");
+    setTimeout(function() {
+      loadingIndicator.classList.add("hidden");
+    }, 160);
   }
   
   // Show main content after bookmarks are loaded
@@ -362,6 +367,9 @@ chrome.bookmarks.getTree((items) => {
   });
 
   currentColumns = columns;
+  // Set flag to indicate bookmarks have been loaded
+  bookmarksLoaded = true;
+  
   // Set default sort preference to "frequency" if not already set
   if (!localStorage.getItem(SORT_PREFERENCE_KEY)) {
     localStorage.setItem(SORT_PREFERENCE_KEY, "frequency");
@@ -586,19 +594,35 @@ function applySorting(columnsToSort, sortBy) {
 const debouncedFilterBookmarks = debounce(filterBookmarks, 300);
 
 function clearMultiSelect() {
-  selectedBookmarks.clear();
+  window.selectedBookmarks.clear();
   document.querySelectorAll(".bookmark-checkbox").forEach((checkbox) => { checkbox.checked = false; });
   document.querySelectorAll(".bookmark-item.selected").forEach((item) => { item.classList.remove("selected"); });
   updateMultiSelectBar();
 }
 
 function openTabsSafely(urls) {
+  if (!urls || urls.length === 0) {
+    console.log('No URLs to open');
+    return;
+  }
+  
+  console.log('Opening URLs:', urls);
+  
   if (window.chrome && chrome.tabs) {
-    urls.forEach((url) => chrome.tabs.create({ url }));
+    // Chrome extension context
+    urls.forEach((url) => {
+      chrome.tabs.create({ url: url, active: false });
+    });
   } else if (window.browser && browser.tabs) {
-    urls.forEach((url) => browser.tabs.create({ url }));
+    // Firefox browser context
+    urls.forEach((url) => {
+      browser.tabs.create({ url: url, active: false });
+    });
   } else {
-    urls.forEach((url) => window.open(url, "_blank"));
+    // Fallback for web context
+    urls.forEach((url) => {
+      window.open(url, "_blank");
+    });
   }
 }
 
@@ -607,40 +631,48 @@ function updateMultiSelectBar() {
   const openBtn = document.getElementById("multi-open-button");
   if (!bar) return;
   
-  if (selectedBookmarks.size > 0) {
+  if (window.selectedBookmarks.size > 0) {
     bar.classList.add("active");
     bar.style.display = "flex";
-    openBtn.textContent = "Open (" + selectedBookmarks.size + ")";
+    openBtn.textContent = "Open (" + window.selectedBookmarks.size + ")";
   } else {
     bar.classList.remove("active");
     bar.style.display = "none";
   }
 }
+window.updateMultiSelectBar = updateMultiSelectBar;
 
+// Setup multi-select listeners - attach directly to document for better reliability
+// This is called after DOM is ready to ensure all elements are present
 function setupMultiSelectListeners() {
-  document.body.addEventListener("click", (e) => {
-    if (e.target.classList.contains("bookmark-checkbox")) {
-      const url = e.target.getAttribute("data-url");
-      if (e.target.checked) {
-        selectedBookmarks.add(url);
-        e.target.closest(".bookmark-item").classList.add("selected");
-      } else {
-        selectedBookmarks.delete(url);
-        e.target.closest(".bookmark-item").classList.remove("selected");
-      }
-      updateMultiSelectBar();
-    } else if (e.target.classList.contains("pin-btn")) {
+  // Use event delegation on document for more reliable event handling
+  document.addEventListener('click', function(e) {
+    // Handle pin button clicks
+    const pinBtn = e.target.closest('.pin-btn');
+    if (pinBtn) {
       e.preventDefault();
-      togglePin(e.target.getAttribute("data-url"));
-    } else if (e.target.classList.contains("copy-url-btn")) {
-      const url = e.target.getAttribute("data-url");
-      if (navigator.clipboard && url) {
+      const url = pinBtn.getAttribute('data-url');
+      if (url) {
+        togglePin(url);
+      }
+      e.stopPropagation();
+      return;
+    }
+
+    // Handle copy URL button clicks
+    const copyBtn = e.target.closest('.copy-url-btn');
+    if (copyBtn) {
+      const url = copyBtn.getAttribute('data-url');
+      if (url && navigator.clipboard) {
         navigator.clipboard.writeText(url).then(() => {
-          const old = e.target.textContent;
-          e.target.textContent = "✓";
-          setTimeout(() => { e.target.textContent = old || "📋"; }, 1000);
+          const old = copyBtn.textContent;
+          copyBtn.textContent = '✓';
+          setTimeout(() => { copyBtn.textContent = old || '📋'; }, 1000);
         });
       }
+      e.preventDefault();
+      e.stopPropagation();
+      return;
     }
   });
 }
@@ -768,14 +800,42 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Font dropdown functionality
-  function applyFont(fontName) {
-    document.body.classList.remove("font-buka-bird", "font-fredoka");
-    if (fontName && fontName !== "buka-bird") {
-      document.body.classList.add("font-" + fontName);
-    }
-    localStorage.setItem(FONT_KEY, fontName || "buka-bird");
+  // Features Modal Functionality
+  const featuresModal = document.getElementById("features-modal");
+  const featuresInfoButton = document.getElementById("settings-info-button");
+  const featuresCloseButton = document.getElementById("features-close");
+
+  // Open features modal
+  if (featuresInfoButton && featuresModal) {
+    featuresInfoButton.addEventListener("click", function() {
+      featuresModal.classList.add("active");
+    });
   }
+
+  // Close features modal
+  if (featuresCloseButton && featuresModal) {
+    featuresCloseButton.addEventListener("click", function() {
+      featuresModal.classList.remove("active");
+    });
+  }
+
+  // Close features modal when clicking outside
+  if (featuresModal) {
+    featuresModal.addEventListener("click", function(e) {
+      if (e.target === featuresModal) {
+        featuresModal.classList.remove("active");
+      }
+    });
+  }
+
+  // Close on Escape key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && featuresModal && featuresModal.classList.contains("active")) {
+      featuresModal.classList.remove("active");
+    }
+  });
+
+// Font dropdown functionality - now uses global function
 
   // Load saved font
   const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
@@ -876,7 +936,7 @@ document.addEventListener("DOMContentLoaded", function() {
   const closeBtn = document.getElementById("multi-close-button");
   if (openBtn) {
     openBtn.addEventListener("click", function() {
-      const urls = Array.from(selectedBookmarks);
+      const urls = Array.from(window.selectedBookmarks);
       if (urls.length) openTabsSafely(urls);
     });
   }
@@ -910,8 +970,8 @@ document.addEventListener("DOMContentLoaded", function() {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
       document.querySelectorAll(".bookmark-checkbox").forEach(function(cb) { if (!cb.checked) cb.click(); });
       e.preventDefault();
-    } else if (e.key === "o" && selectedBookmarks.size) {
-      openTabsSafely(Array.from(selectedBookmarks));
+    } else if (e.key === "o" && window.selectedBookmarks.size) {
+      openTabsSafely(Array.from(window.selectedBookmarks));
     } else if (e.key === "c") {
       clearMultiSelect();
     }
@@ -994,13 +1054,26 @@ function renderTitleWithUnderline(formattedTitle) {
 
 function updateTimestamp() {
   const now = new Date();
-  document.getElementById("date").textContent = now.toLocaleDateString();
+  
+  // Check if elements exist before updating
+  const dateEl = document.getElementById("date");
+  const hoursEl = document.getElementById("hours");
+  const minutesEl = document.getElementById("minutes");
+  const secondsEl = document.getElementById("seconds");
+  const ampmEl = document.getElementById("ampm");
+  const dayEl = document.getElementById("day");
+  
+  if (!dateEl || !hoursEl || !minutesEl || !secondsEl || !ampmEl || !dayEl) {
+    return; // Elements don't exist, skip update
+  }
+  
+  dateEl.textContent = now.toLocaleDateString();
   const hours = now.getHours();
-  document.getElementById("hours").textContent = (hours % 12 || 12).toString().padStart(2, "0");
-  document.getElementById("minutes").textContent = now.getMinutes().toString().padStart(2, "0");
-  document.getElementById("seconds").textContent = now.getSeconds().toString().padStart(2, "0");
-  document.getElementById("ampm").textContent = hours >= 12 ? "PM" : "AM";
-  document.getElementById("day").textContent = now.toLocaleDateString("en-US", { weekday: "long" });
+  hoursEl.textContent = (hours % 12 || 12).toString().padStart(2, "0");
+  minutesEl.textContent = now.getMinutes().toString().padStart(2, "0");
+  secondsEl.textContent = now.getSeconds().toString().padStart(2, "0");
+  ampmEl.textContent = hours >= 12 ? "PM" : "AM";
+  dayEl.textContent = now.toLocaleDateString("en-US", { weekday: "long" });
   
   // Get custom title from localStorage or use default
   const CUSTOM_TITLE_KEY = "customTitle";
@@ -1275,7 +1348,225 @@ document.addEventListener("click", function(e) {
   }
 });
 
+// ============================================
+// EDIT BOOKMARK FUNCTIONALITY
+// ============================================
+
+// Variable to store the current bookmark being edited
+let currentEditingBookmarkId = null;
+
+// Function to populate the folder dropdown in the edit modal
+function populateEditFolderDropdown() {
+  const folderSelect = document.getElementById("edit-folder");
+  if (!folderSelect) return;
+  
+  folderSelect.innerHTML = "";
+  
+  // Add root option
+  const rootOption = document.createElement("option");
+  rootOption.value = "";
+  rootOption.textContent = "/ (Root)";
+  folderSelect.appendChild(rootOption);
+  
+  // Add columns as folder options
+  columns.forEach(function(col) {
+    const option = document.createElement("option");
+    option.value = col.title;
+    option.textContent = col.title;
+    folderSelect.appendChild(option);
+  });
+}
+
+// Function to open the edit modal with bookmark data
+function openEditModal(url, title) {
+  const editModal = document.getElementById("edit-modal");
+  const editTitleInput = document.getElementById("edit-title");
+  const editUrlInput = document.getElementById("edit-url");
+  const editFolderSelect = document.getElementById("edit-folder");
+  
+  if (!editModal || !editTitleInput || !editUrlInput || !editFolderSelect) {
+    console.error("Edit modal elements not found");
+    return;
+  }
+  
+  // Populate folder dropdown
+  populateEditFolderDropdown();
+  
+  // Find the bookmark ID from the URL
+  if (window.chrome && chrome.bookmarks) {
+    chrome.bookmarks.search({ url: url }, function(results) {
+      if (results && results.length > 0) {
+        currentEditingBookmarkId = results[0].id;
+        
+        // Set form values
+        editTitleInput.value = title || "";
+        editUrlInput.value = url || "";
+        
+        // Try to find the folder this bookmark belongs to
+        // For now, we'll leave it at root or the first match
+        const parentId = results[0].parentId;
+        if (parentId) {
+          chrome.bookmarks.get(parentId, function(parentResult) {
+            if (parentResult && parentResult.length > 0) {
+              const parentTitle = parentResult[0].title;
+              // Try to match with our columns
+              let foundFolder = false;
+              columns.forEach(function(col) {
+                if (col.title === parentTitle) {
+                  editFolderSelect.value = col.title;
+                  foundFolder = true;
+                }
+              });
+              // If not found in columns, try root
+              if (!foundFolder) {
+                editFolderSelect.value = "";
+              }
+            }
+          });
+        }
+        
+        // Show the modal
+        editModal.classList.add("active");
+      } else {
+        console.error("Bookmark not found for URL:", url);
+        alert("Could not find the bookmark to edit.");
+      }
+    });
+  }
+}
+
+// Function to save the edited bookmark
+function saveEditedBookmark() {
+  const editTitleInput = document.getElementById("edit-title");
+  const editUrlInput = document.getElementById("edit-url");
+  const editFolderSelect = document.getElementById("edit-folder");
+  
+  if (!editTitleInput || !editUrlInput || !editFolderSelect) {
+    console.error("Edit form elements not found");
+    return;
+  }
+  
+  const newTitle = editTitleInput.value.trim();
+  const newUrl = editUrlInput.value.trim();
+  const newFolder = editFolderSelect.value;
+  
+  if (!newTitle || !newUrl) {
+    alert("Please enter both title and URL");
+    return;
+  }
+  
+  // Validate URL
+  try {
+    new URL(newUrl);
+  } catch (e) {
+    alert("Please enter a valid URL");
+    return;
+  }
+  
+  if (!currentEditingBookmarkId) {
+    console.error("No bookmark ID to update");
+    return;
+  }
+  
+  // Update the bookmark
+  if (window.chrome && chrome.bookmarks) {
+    chrome.bookmarks.update(currentEditingBookmarkId, {
+      title: newTitle,
+      url: newUrl
+    }, function(result) {
+      if (chrome.runtime.lastError) {
+        console.error("Error updating bookmark:", chrome.runtime.lastError);
+        alert("Error updating bookmark: " + chrome.runtime.lastError.message);
+      } else {
+        // Close the modal
+        const editModal = document.getElementById("edit-modal");
+        if (editModal) {
+          editModal.classList.remove("active");
+        }
+        
+        // Refresh bookmarks to show the updated data
+        refreshBookmarks();
+      }
+    });
+  }
+}
+
+// Initialize edit bookmark functionality
+function initEditBookmarkModal() {
+  const editModal = document.getElementById("edit-modal");
+  const editForm = document.getElementById("edit-form");
+  const editCancelBtn = document.getElementById("edit-cancel");
+  const editSaveBtn = document.getElementById("edit-save");
+  
+  // Handle edit button clicks using event delegation
+  document.addEventListener("click", function(e) {
+    const editBtn = e.target.closest(".edit-bookmark-btn");
+    if (!editBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = editBtn.getAttribute("data-url");
+    const title = editBtn.getAttribute("data-title");
+    
+    if (url) {
+      openEditModal(url, title);
+    }
+  });
+  
+  // Handle cancel button
+  if (editCancelBtn) {
+    editCancelBtn.addEventListener("click", function() {
+      if (editModal) {
+        editModal.classList.remove("active");
+      }
+    });
+  }
+  
+  // Handle save button
+  if (editSaveBtn) {
+    editSaveBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      saveEditedBookmark();
+    });
+  }
+  
+  // Handle form submission
+  if (editForm) {
+    editForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      saveEditedBookmark();
+    });
+  }
+  
+  // Close modal when clicking outside
+  if (editModal) {
+    editModal.addEventListener("click", function(e) {
+      if (e.target === editModal) {
+        editModal.classList.remove("active");
+      }
+    });
+  }
+  
+  // Close on Escape key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && editModal && editModal.classList.contains("active")) {
+      editModal.classList.remove("active");
+    }
+  });
+}
+
+// Initialize the edit modal when DOM is ready
+document.addEventListener("DOMContentLoaded", function() {
+  initEditBookmarkModal();
+});
+
 function renderCurrent() {
+  // Don't render until bookmarks are loaded to prevent showing "No bookmarks found" prematurely
+  if (!bookmarksLoaded) {
+    return;
+  }
+  
   const sortBy = localStorage.getItem(SORT_PREFERENCE_KEY) || "frequency";
   const sortedColumns = applySorting(currentColumns, sortBy);
   render(sortedColumns);
@@ -1505,7 +1796,7 @@ function initSettingsModal() {
     }
   });
 
-      // Save button handler
+// Save button handler
   if (settingsSave) {
     settingsSave.addEventListener("click", function() {
       // Save custom title
@@ -1564,6 +1855,12 @@ function initSettingsModal() {
         if (headerFontSelect) headerFontSelect.value = selectedFont.value;
       }
 
+      // Save font size
+      const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
+      if (selectedFontSize) {
+        applyFontSize(selectedFontSize.value);
+      }
+
       // Save sort preference
       const settingsSortSelect = document.getElementById("settings-sort-select");
       if (settingsSortSelect) {
@@ -1592,6 +1889,16 @@ function initSettingsModal() {
     radio.addEventListener("change", function() {
       if (this.checked) {
         applyFont(this.value);
+      }
+    });
+  });
+
+  // Font size radio buttons - live preview (apply immediately but don't save until Save is clicked)
+  const fontSizeRadios = document.querySelectorAll('input[name="fontSize"]');
+  fontSizeRadios.forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (this.checked) {
+        applyFontSize(this.value);
       }
     });
   });
@@ -1627,6 +1934,11 @@ function loadSettingsValues() {
   const fontRadio = document.querySelector('input[name="font"][value="' + savedFont + '"]');
   if (fontRadio) fontRadio.checked = true;
 
+  // Load font size
+  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "16";
+  const fontSizeRadio = document.querySelector('input[name="fontSize"][value="' + savedFontSize + '"]');
+  if (fontSizeRadio) fontSizeRadio.checked = true;
+
   // Load sort preference
   const sortSelect = document.getElementById("settings-sort-select");
   if (sortSelect) {
@@ -1635,7 +1947,108 @@ function loadSettingsValues() {
   }
 }
 
+// ============================================
+// GLOBAL APPLY THEME & FONT FUNCTIONS
+// ============================================
+function applyTheme(themeName) {
+  document.body.className = "";
+  if (themeName && themeName !== "default") {
+    document.body.classList.add("theme-" + themeName);
+  }
+  localStorage.setItem("selectedTheme", themeName || "default");
+}
+
+function applyFont(fontName) {
+  document.body.classList.remove("font-buka-bird", "font-fredoka");
+  if (fontName && fontName !== "buka-bird") {
+    document.body.classList.add("font-" + fontName);
+  }
+  localStorage.setItem("selectedFont", fontName || "buka-bird");
+}
+
 // Initialize settings modal on DOM ready
 document.addEventListener("DOMContentLoaded", function() {
   initSettingsModal();
+  
+  // Load saved font size
+  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "16";
+  applyFontSize(savedFontSize);
+  
+  // Add event listeners for random buttons
+  const randomThemeBtn = document.getElementById("random-theme-button");
+  if (randomThemeBtn) {
+    randomThemeBtn.addEventListener("click", randomizeTheme);
+  }
+  
+  const randomFontBtn = document.getElementById("random-font-button");
+  if (randomFontBtn) {
+    randomFontBtn.addEventListener("click", randomizeFont);
+  }
+  
+  const randomFontSizeBtn = document.getElementById("random-font-size-button");
+  if (randomFontSizeBtn) {
+    randomFontSizeBtn.addEventListener("click", randomizeFontSize);
+  }
 });
+
+// Randomize Theme Function
+function randomizeTheme() {
+  const themes = ["default", "matrix", "ocean", "sunset", "forest", "midnight", "aurora", "rose", "lemon", "coral", "lavender", "nord", "dracula", "monokai", "cyberpunk"];
+  const randomIndex = Math.floor(Math.random() * themes.length);
+  const randomTheme = themes[randomIndex];
+  
+  // Apply the theme
+  applyTheme(randomTheme);
+  
+  // Update the radio button selection in the modal
+  const themeRadio = document.querySelector('input[name="theme"][value="' + randomTheme + '"]');
+  if (themeRadio) {
+    themeRadio.checked = true;
+  }
+}
+
+// Randomize Font Function
+function randomizeFont() {
+  const fonts = ["buka-bird", "fredoka", "poppins", "roboto", "open-sans", "lato", "montserrat", "raleway", "nunito", "playfair"];
+  const randomIndex = Math.floor(Math.random() * fonts.length);
+  const randomFont = fonts[randomIndex];
+  
+  // Apply the font
+  applyFont(randomFont);
+  
+  // Update the radio button selection in the modal
+  const fontRadio = document.querySelector('input[name="font"][value="' + randomFont + '"]');
+  if (fontRadio) {
+    fontRadio.checked = true;
+  }
+}
+
+// ============================================
+// FONT SIZE FUNCTIONS
+// ============================================
+function applyFontSize(fontSize) {
+  // Remove all font-size classes
+  document.body.classList.remove("font-size-14", "font-size-16", "font-size-18", "font-size-20", "font-size-22", "font-size-24");
+  
+  // Add the selected font-size class
+  if (fontSize && fontSize !== "16") {
+    document.body.classList.add("font-size-" + fontSize);
+  }
+  localStorage.setItem(FONT_SIZE_KEY, fontSize || "16");
+}
+
+// Randomize Font Size Function
+function randomizeFontSize() {
+  const fontSizes = ["14", "16", "18", "20", "22", "24"];
+  const randomIndex = Math.floor(Math.random() * fontSizes.length);
+  const randomFontSize = fontSizes[randomIndex];
+  
+  // Apply the font size
+  applyFontSize(randomFontSize);
+  
+  // Update the radio button selection in the modal
+  const fontSizeRadio = document.querySelector('input[name="fontSize"][value="' + randomFontSize + '"]');
+  if (fontSizeRadio) {
+    fontSizeRadio.checked = true;
+  }
+}

@@ -142,7 +142,7 @@ body.theme-forest .spinner {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem;
   width: 100vw;
@@ -541,20 +541,115 @@ div.column {
   color: #ff0000;
 }
 
+/* Bookmark Action Buttons - Unified styling */
+.bookmark-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ff9900;
+  border-radius: 4px;
+  background: #222;
+  color: #ff9900;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.bookmark-action-btn:hover {
+  background: #ff9900;
+  color: #222;
+}
+
+/* Pin Button */
+.pin-btn {
+  background: transparent;
+  border: none;
+  color: #ff9900;
+  font-size: 1.2em;
+}
+
+.pin-btn:hover {
+  background: rgba(255, 153, 0, 0.2);
+  color: #ff9900;
+}
+
+.pin-btn.pinned {
+  color: #ffd700;
+}
+
+.pin-btn.pinned:hover {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+}
+
+/* Copy URL Button */
 .copy-url-btn {
   background: #222;
   color: #ff9900;
   border: 1px solid #ff9900;
-  border-radius: 3px;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 1em;
-  padding: 2px 6px;
-  margin-left: 4px;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .copy-url-btn:hover {
   background: #ff9900;
+  color: #222;
+}
+
+/* Edit Button */
+.edit-bookmark-btn {
+  background: #222;
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-bookmark-btn:hover {
+  background: #ffd700;
+  color: #222;
+}
+
+/* Delete Button */
+.delete-bookmark-btn {
+  background: #222;
+  color: #ff5555;
+  border: 1px solid #ff5555;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-bookmark-btn:hover {
+  background: #ff5555;
   color: #222;
 }
 
@@ -902,50 +997,7 @@ body.theme-cyberpunk #settings-button:hover {
   color: #0a0012;
 }
 
-.delete-bookmark-btn {
-  background: none;
-  border: none;
-  color: #ff5555;
-  cursor: pointer;
-  font-size: 1em;
-}
 
-.delete-bookmark-btn:hover {
-  color: #ff0000;
-}
-
-.edit-bookmark-btn {
-  background: none;
-  border: none;
-  color: #ffd700;
-  cursor: pointer;
-  font-size: 1em;
-}
-
-.edit-bookmark-btn:hover {
-  color: #ff9900;
-}
-
-.pin-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.6em;
-  color: #ff9900;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.pin-btn:hover {
-  opacity: 1;
-}
-
-.pin-btn.pinned {
-  color: #ffd700;
-  opacity: 1;
-}
-
-/* AI Tags Styles */
 .bookmark-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1612,12 +1664,33 @@ body.theme-forest .font-select:hover {
 }
 
 /* Forest theme - Quick link buttons */
-body.theme-forest .chatgpt-btn { background-color: #7cfc00; color: #1a2e1a; border-color: #7cfc00; }
-body.theme-forest .chatgpt-btn:hover { background-color: #1a2e1a; color: #7cfc00; }
-body.theme-forest .grok-btn { background-color: #7cfc00; color: #1a2e1a; border-color: #7cfc00; }
-body.theme-forest .grok-btn:hover { background-color: #1a2e1a; color: #7cfc00; }
+body.theme-forest .chatgpt-btn { background-color: #1a2e1a; color: #7cfc00; border-color: #7cfc00; }
+body.theme-forest .chatgpt-btn:hover { background-color: #7cfc00; color: #1a2e1a; }
+body.theme-forest .grok-btn { background-color: #1a2e1a; color: #7cfc00; border-color: #7cfc00; }
+body.theme-forest .grok-btn:hover { background-color: #7cfc00; color: #1a2e1a; }
 body.theme-forest .reddit-btn, body.theme-forest .twitch-btn, body.theme-forest .youtube-btn { border-color: #7cfc00; color: #7cfc00; background: #1a2e1a; }
 body.theme-forest .reddit-btn:hover, body.theme-forest .twitch-btn:hover, body.theme-forest .youtube-btn:hover { background: #7cfc00; color: #1a2e1a; }
+
+body.theme-forest .search-button,
+body.theme-forest .filter-button,
+body.theme-forest .small-button,
+body.theme-forest #multi-open-button,
+body.theme-forest #multi-close-button,
+body.theme-forest .theme-select {
+  border-color: #7cfc00;
+  color: #7cfc00;
+  background: #1a2e1a;
+}
+
+body.theme-forest .search-button:hover,
+body.theme-forest .filter-button:hover,
+body.theme-forest .small-button:hover,
+body.theme-forest #multi-open-button:hover,
+body.theme-forest #multi-close-button:hover,
+body.theme-forest .theme-select:hover {
+  background: #7cfc00;
+  color: #1a2e1a;
+}
 
 /* Forest theme - Search input */
 body.theme-forest #search-input {
@@ -1667,6 +1740,26 @@ body.theme-midnight .chatgpt-btn { background-color: #6c5ce7; color: #0d0d1a; bo
 body.theme-midnight .chatgpt-btn:hover { background-color: #1a1a2e; color: #6c5ce7; }
 body.theme-midnight .grok-btn { background-color: #6c5ce7; color: #0d0d1a; border-color: #6c5ce7; }
 body.theme-midnight .grok-btn:hover { background-color: #1a1a2e; color: #6c5ce7; }
+body.theme-midnight .reddit-btn, body.theme-midnight .twitch-btn, body.theme-midnight .youtube-btn { border-color: #6c5ce7; color: #6c5ce7; background: #1a1a2e; }
+body.theme-midnight .reddit-btn:hover, body.theme-midnight .twitch-btn:hover, body.theme-midnight .youtube-btn:hover { background: #6c5ce7; color: #0d0d1a; }
+body.theme-midnight #search-input { border-color: #6c5ce7; background-color: #1a1a2e; color: #6c5ce7; }
+body.theme-midnight #search-input::placeholder { color: #6c5ce7; opacity: 0.7; }
+body.theme-midnight .subfolder-header { color: #a29bfe; background: rgba(108, 92, 231, 0.1); border-left-color: #a29bfe; }
+body.theme-midnight summary.filter-folder-summary { border-color: #6c5ce7; background: #1a1a2e; color: #6c5ce7; }
+body.theme-midnight summary.filter-folder-summary:hover, body.theme-midnight summary.filter-folder-summary:focus { background: #6c5ce7; color: #0d0d1a; }
+body.theme-midnight #edit-modal form, body.theme-midnight #workmode-modal form { background: #0d0d1a; border-color: #6c5ce7; }
+body.theme-midnight #edit-modal label, body.theme-midnight #workmode-modal label, body.theme-midnight #workmode-modal h2 { color: #6c5ce7; }
+body.theme-midnight #edit-modal input, body.theme-midnight #edit-modal select, body.theme-midnight #workmode-folder-list label { background: #1a1a2e; border-color: #6c5ce7; color: #6c5ce7; }
+body.theme-midnight #edit-modal #edit-cancel, body.theme-midnight #workmode-cancel { background: #1a1a2e; color: #6c5ce7; border-color: #6c5ce7; }
+body.theme-midnight #edit-modal #edit-save, body.theme-midnight #workmode-ok { background: #6c5ce7; color: #0d0d1a; border-color: #6c5ce7; }
+body.theme-midnight #workmode-folder-list input[type="checkbox"] { accent-color: #6c5ce7; }
+body.theme-midnight .filter-buttons details details { border-left-color: rgba(108, 92, 231, 0.3); }
+
+/* Midnight theme - Quick link buttons */
+body.theme-midnight .chatgpt-btn { background-color: #1a1a2e; color: #6c5ce7; border-color: #6c5ce7; }
+body.theme-midnight .chatgpt-btn:hover { background-color: #6c5ce7; color: #0d0d1a; }
+body.theme-midnight .grok-btn { background-color: #1a1a2e; color: #6c5ce7; border-color: #6c5ce7; }
+body.theme-midnight .grok-btn:hover { background-color: #6c5ce7; color: #0d0d1a; }
 body.theme-midnight .reddit-btn, body.theme-midnight .twitch-btn, body.theme-midnight .youtube-btn { border-color: #6c5ce7; color: #6c5ce7; background: #1a1a2e; }
 body.theme-midnight .reddit-btn:hover, body.theme-midnight .twitch-btn:hover, body.theme-midnight .youtube-btn:hover { background: #6c5ce7; color: #0d0d1a; }
 body.theme-midnight #search-input { border-color: #6c5ce7; background-color: #1a1a2e; color: #6c5ce7; }
@@ -2011,10 +2104,10 @@ body.theme-lavender a { color: #e6e6fa; }
 body.theme-lavender a:hover { color: #dda0dd; }
 body.theme-lavender .search-button, body.theme-lavender .filter-button, body.theme-lavender .small-button, body.theme-lavender #multi-open-button, body.theme-lavender #multi-close-button, body.theme-lavender .theme-select { border-color: #e6e6fa; color: #e6e6fa; background: #1a152d; }
 body.theme-lavender .search-button:hover, body.theme-lavender .filter-button:hover, body.theme-lavender .small-button:hover, body.theme-lavender #multi-open-button:hover, body.theme-lavender #multi-close-button:hover, body.theme-lavender .theme-select:hover { background: #e6e6fa; color: #0f0a1a; }
-body.theme-lavender .chatgpt-btn { background-color: #e6e6fa; color: #0f0a1a; border-color: #e6e6fa; }
-body.theme-lavender .chatgpt-btn:hover { background-color: #1a152d; color: #e6e6fa; }
-body.theme-lavender .grok-btn { background-color: #e6e6fa; color: #0f0a1a; border-color: #e6e6fa; }
-body.theme-lavender .grok-btn:hover { background-color: #1a152d; color: #e6e6fa; }
+body.theme-lavender .chatgpt-btn { background-color: #1a152d; color: #e6e6fa; border-color: #e6e6fa; }
+body.theme-lavender .chatgpt-btn:hover { background-color: #e6e6fa; color: #0f0a1a; }
+body.theme-lavender .grok-btn { background-color: #1a152d; color: #e6e6fa; border-color: #e6e6fa; }
+body.theme-lavender .grok-btn:hover { background-color: #e6e6fa; color: #0f0a1a; }
 body.theme-lavender .reddit-btn, body.theme-lavender .twitch-btn, body.theme-lavender .youtube-btn { border-color: #e6e6fa; color: #e6e6fa; background: #1a152d; }
 body.theme-lavender .reddit-btn:hover, body.theme-lavender .twitch-btn:hover, body.theme-lavender .youtube-btn:hover { background: #e6e6fa; color: #0f0a1a; }
 body.theme-lavender #search-input { border-color: #e6e6fa; background-color: #1a152d; color: #e6e6fa; }
@@ -2041,10 +2134,10 @@ body.theme-nord a { color: #88c0d0; }
 body.theme-nord a:hover { color: #5e81ac; }
 body.theme-nord .search-button, body.theme-nord .filter-button, body.theme-nord .small-button, body.theme-nord #multi-open-button, body.theme-nord #multi-close-button, body.theme-nord .theme-select { border-color: #88c0d0; color: #88c0d0; background: #2e3440; }
 body.theme-nord .search-button:hover, body.theme-nord .filter-button:hover, body.theme-nord .small-button:hover, body.theme-nord #multi-open-button:hover, body.theme-nord #multi-close-button:hover, body.theme-nord .theme-select:hover { background: #88c0d0; color: #1a1f28; }
-body.theme-nord .chatgpt-btn { background-color: #88c0d0; color: #1a1f28; border-color: #88c0d0; }
-body.theme-nord .chatgpt-btn:hover { background-color: #2e3440; color: #88c0d0; }
-body.theme-nord .grok-btn { background-color: #88c0d0; color: #1a1f28; border-color: #88c0d0; }
-body.theme-nord .grok-btn:hover { background-color: #2e3440; color: #88c0d0; }
+body.theme-nord .chatgpt-btn { background-color: #2e3440; color: #88c0d0; border-color: #88c0d0; }
+body.theme-nord .chatgpt-btn:hover { background-color: #88c0d0; color: #1a1f28; }
+body.theme-nord .grok-btn { background-color: #2e3440; color: #88c0d0; border-color: #88c0d0; }
+body.theme-nord .grok-btn:hover { background-color: #88c0d0; color: #1a1f28; }
 body.theme-nord .reddit-btn, body.theme-nord .twitch-btn, body.theme-nord .youtube-btn { border-color: #88c0d0; color: #88c0d0; background: #2e3440; }
 body.theme-nord .reddit-btn:hover, body.theme-nord .twitch-btn:hover, body.theme-nord .youtube-btn:hover { background: #88c0d0; color: #1a1f28; }
 body.theme-nord #search-input { border-color: #88c0d0; background-color: #2e3440; color: #88c0d0; }
@@ -2071,10 +2164,10 @@ body.theme-dracula a { color: #bd93f9; }
 body.theme-dracula a:hover { color: #ff79c6; }
 body.theme-dracula .search-button, body.theme-dracula .filter-button, body.theme-dracula .small-button, body.theme-dracula #multi-open-button, body.theme-dracula #multi-close-button, body.theme-dracula .theme-select { border-color: #bd93f9; color: #bd93f9; background: #1a1a2e; }
 body.theme-dracula .search-button:hover, body.theme-dracula .filter-button:hover, body.theme-dracula .small-button:hover, body.theme-dracula #multi-open-button:hover, body.theme-dracula #multi-close-button:hover, body.theme-dracula .theme-select:hover { background: #bd93f9; color: #0d0d12; }
-body.theme-dracula .chatgpt-btn { background-color: #bd93f9; color: #0d0d12; border-color: #bd93f9; }
-body.theme-dracula .chatgpt-btn:hover { background-color: #1a1a2e; color: #bd93f9; }
-body.theme-dracula .grok-btn { background-color: #bd93f9; color: #0d0d12; border-color: #bd93f9; }
-body.theme-dracula .grok-btn:hover { background-color: #1a1a2e; color: #bd93f9; }
+body.theme-dracula .chatgpt-btn { background-color: #1a1a2e; color: #bd93f9; border-color: #bd93f9; }
+body.theme-dracula .chatgpt-btn:hover { background-color: #bd93f9; color: #0d0d12; }
+body.theme-dracula .grok-btn { background-color: #1a1a2e; color: #bd93f9; border-color: #bd93f9; }
+body.theme-dracula .grok-btn:hover { background-color: #bd93f9; color: #0d0d12; }
 body.theme-dracula .reddit-btn, body.theme-dracula .twitch-btn, body.theme-dracula .youtube-btn { border-color: #bd93f9; color: #bd93f9; background: #1a1a2e; }
 body.theme-dracula .reddit-btn:hover, body.theme-dracula .twitch-btn:hover, body.theme-dracula .youtube-btn:hover { background: #bd93f9; color: #0d0d12; }
 body.theme-dracula #search-input { border-color: #bd93f9; background-color: #1a1a2e; color: #bd93f9; }
@@ -2101,10 +2194,10 @@ body.theme-monokai a { color: #f92672; }
 body.theme-monokai a:hover { color: #a6e22e; }
 body.theme-monokai .search-button, body.theme-monokai .filter-button, body.theme-monokai .small-button, body.theme-monokai #multi-open-button, body.theme-monokai #multi-close-button, body.theme-monokai .theme-select { border-color: #f92672; color: #f92672; background: #2d2a1f; }
 body.theme-monokai .search-button:hover, body.theme-monokai .filter-button:hover, body.theme-monokai .small-button:hover, body.theme-monokai #multi-open-button:hover, body.theme-monokai #multi-close-button:hover, body.theme-monokai .theme-select:hover { background: #f92672; color: #1a1710; }
-body.theme-monokai .chatgpt-btn { background-color: #f92672; color: #1a1710; border-color: #f92672; }
-body.theme-monokai .chatgpt-btn:hover { background-color: #2d2a1f; color: #f92672; }
-body.theme-monokai .grok-btn { background-color: #f92672; color: #1a1710; border-color: #f92672; }
-body.theme-monokai .grok-btn:hover { background-color: #2d2a1f; color: #f92672; }
+body.theme-monokai .chatgpt-btn { background-color: #2d2a1f; color: #f92672; border-color: #f92672; }
+body.theme-monokai .chatgpt-btn:hover { background-color: #f92672; color: #1a1710; }
+body.theme-monokai .grok-btn { background-color: #2d2a1f; color: #f92672; border-color: #f92672; }
+body.theme-monokai .grok-btn:hover { background-color: #f92672; color: #1a1710; }
 body.theme-monokai .reddit-btn, body.theme-monokai .twitch-btn, body.theme-monokai .youtube-btn { border-color: #f92672; color: #f92672; background: #2d2a1f; }
 body.theme-monokai .reddit-btn:hover, body.theme-monokai .twitch-btn:hover, body.theme-monokai .youtube-btn:hover { background: #f92672; color: #1a1710; }
 body.theme-monokai #search-input { border-color: #f92672; background-color: #2d2a1f; color: #f92672; }
@@ -2131,10 +2224,10 @@ body.theme-cyberpunk a { color: #ff00ff; }
 body.theme-cyberpunk a:hover { color: #00ffff; }
 body.theme-cyberpunk .search-button, body.theme-cyberpunk .filter-button, body.theme-cyberpunk .small-button, body.theme-cyberpunk #multi-open-button, body.theme-cyberpunk #multi-close-button, body.theme-cyberpunk .theme-select { border-color: #ff00ff; color: #ff00ff; background: #12001f; }
 body.theme-cyberpunk .search-button:hover, body.theme-cyberpunk .filter-button:hover, body.theme-cyberpunk .small-button:hover, body.theme-cyberpunk #multi-open-button:hover, body.theme-cyberpunk #multi-close-button:hover, body.theme-cyberpunk .theme-select:hover { background: #ff00ff; color: #0a0012; }
-body.theme-cyberpunk .chatgpt-btn { background-color: #ff00ff; color: #0a0012; border-color: #ff00ff; }
-body.theme-cyberpunk .chatgpt-btn:hover { background-color: #12001f; color: #ff00ff; }
-body.theme-cyberpunk .grok-btn { background-color: #ff00ff; color: #0a0012; border-color: #ff00ff; }
-body.theme-cyberpunk .grok-btn:hover { background-color: #12001f; color: #ff00ff; }
+body.theme-cyberpunk .chatgpt-btn { background-color: #12001f; color: #ff00ff; border-color: #ff00ff; }
+body.theme-cyberpunk .chatgpt-btn:hover { background-color: #ff00ff; color: #0a0012; }
+body.theme-cyberpunk .grok-btn { background-color: #12001f; color: #ff00ff; border-color: #ff00ff; }
+body.theme-cyberpunk .grok-btn:hover { background-color: #ff00ff; color: #0a0012; }
 body.theme-cyberpunk .reddit-btn, body.theme-cyberpunk .twitch-btn, body.theme-cyberpunk .youtube-btn { border-color: #ff00ff; color: #ff00ff; background: #12001f; }
 body.theme-cyberpunk .reddit-btn:hover, body.theme-cyberpunk .twitch-btn:hover, body.theme-cyberpunk .youtube-btn:hover { background: #ff00ff; color: #0a0012; }
 body.theme-cyberpunk #search-input { border-color: #ff00ff; background-color: #12001f; color: #ff00ff; }
@@ -3146,6 +3239,57 @@ body.theme-forest .filter-buttons details details {
   font-family: 'Playfair Display', serif;
 }
 
+/* Font Size Preview */
+.font-size-preview {
+  width: 50px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #1a1a24;
+  border: 2px solid #444;
+  color: #ff9900;
+  font-family: 'Buka Bird', 'Fredoka', sans-serif;
+}
+
+.font-size-14-preview { font-size: 14px; }
+.font-size-16-preview { font-size: 16px; }
+.font-size-18-preview { font-size: 18px; }
+.font-size-20-preview { font-size: 20px; }
+.font-size-22-preview { font-size: 22px; }
+.font-size-24-preview { font-size: 24px; }
+
+/* Font Size Grid */
+.font-size-grid {
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+}
+
+/* Font Size Classes - Applied to bookmark links */
+body.font-size-14 .bookmark-link {
+  font-size: 14px;
+}
+
+body.font-size-16 .bookmark-link {
+  font-size: 16px;
+}
+
+body.font-size-18 .bookmark-link {
+  font-size: 18px;
+}
+
+body.font-size-20 .bookmark-link {
+  font-size: 20px;
+}
+
+body.font-size-22 .bookmark-link {
+  font-size: 22px;
+}
+
+body.font-size-24 .bookmark-link {
+  font-size: 24px;
+}
+
 /* Settings Input */
 .settings-input {
   width: 100%;
@@ -3226,6 +3370,29 @@ body.theme-forest .filter-buttons details details {
   padding: 1rem 1.5rem;
   border-top: 1px solid #333;
   text-align: center;
+}
+
+/* Random buttons for theme and font */
+.settings-random-btn {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  border: 2px dashed #666;
+  border-radius: 4px;
+  background: transparent;
+  color: #aaa;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  width: auto;
+  display: inline-block;
+}
+
+.settings-random-btn:hover {
+  border-style: solid;
+  background: rgba(255, 153, 0, 0.1);
+  color: #ff9900;
+  border-color: #ff9900;
 }
 
 /* Import/Export buttons in settings */
@@ -3568,6 +3735,292 @@ body.theme-matrix [data-tooltip]::after {
   background: #001100;
   color: #00ff00;
   border: 1px solid #00ff00;
+}
+
+/* ===========================================
+   FEATURES MODAL STYLES
+   =========================================== */
+#features-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 3000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+
+#features-modal.active {
+  display: flex;
+}
+
+.features-container {
+  background: #1a1a24;
+  border-radius: 12px;
+  border: 2px solid #ff9900;
+  max-width: 700px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.features-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #333;
+  background: linear-gradient(135deg, #1a1a24 0%, #252532 100%);
+  border-radius: 12px 12px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.features-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #ff9900;
+}
+
+.features-close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.5rem;
+  transition: color 0.2s;
+}
+
+.features-close-btn:hover {
+  color: #ff9900;
+}
+
+.features-content {
+  padding: 1rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #252532;
+  border: 1px solid #333;
+  transition: all 0.2s;
+}
+
+.feature-item:hover {
+  border-color: #ff9900;
+  background: #2d2d3d;
+}
+
+.feature-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.feature-text {
+  flex: 1;
+}
+
+.feature-text h4 {
+  margin: 0 0 0.3rem 0;
+  font-size: 1rem;
+  color: #ff9900;
+}
+
+.feature-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+/* Features Modal - Theme specific styles */
+/* Matrix Theme */
+body.theme-matrix .features-container {
+  border-color: #00ff00;
+  background: #0a0a0a;
+}
+body.theme-matrix .features-header { background: linear-gradient(135deg, #0a0a0a 0%, #001100 100%); }
+body.theme-matrix .features-header h2 { color: #00ff00; }
+body.theme-matrix .features-close-btn:hover { color: #00ff00; }
+body.theme-matrix .feature-item { background: #001100; border-color: #003300; }
+body.theme-matrix .feature-item:hover { border-color: #00ff00; }
+body.theme-matrix .feature-text h4 { color: #00ff00; }
+body.theme-matrix .feature-text p { color: #88ff88; }
+
+/* Ocean Theme */
+body.theme-ocean .features-container {
+  border-color: #00bfff;
+  background: #0a1929;
+}
+body.theme-ocean .features-header { background: linear-gradient(135deg, #0a1929 0%, #002244 100%); }
+body.theme-ocean .features-header h2 { color: #00bfff; }
+body.theme-ocean .features-close-btn:hover { color: #00bfff; }
+body.theme-ocean .feature-item { background: #002244; border-color: #003355; }
+body.theme-ocean .feature-item:hover { border-color: #00bfff; }
+body.theme-ocean .feature-text h4 { color: #00bfff; }
+body.theme-ocean .feature-text p { color: #88d4ff; }
+
+/* Sunset Theme */
+body.theme-sunset .features-container {
+  border-color: #ff6b6b;
+  background: #1a0505;
+}
+body.theme-sunset .features-header { background: linear-gradient(135deg, #1a0505 0%, #3d2020 100%); }
+body.theme-sunset .features-header h2 { color: #ff6b6b; }
+body.theme-sunset .features-close-btn:hover { color: #ff6b6b; }
+body.theme-sunset .feature-item { background: #3d2020; border-color: #4a2525; }
+body.theme-sunset .feature-item:hover { border-color: #ff6b6b; }
+body.theme-sunset .feature-text h4 { color: #ff6b6b; }
+body.theme-sunset .feature-text p { color: #ffaaaa; }
+
+/* Forest Theme */
+body.theme-forest .features-container {
+  border-color: #7cfc00;
+  background: #0a140a;
+}
+body.theme-forest .features-header { background: linear-gradient(135deg, #0a140a 0%, #1a2e1a 100%); }
+body.theme-forest .features-header h2 { color: #7cfc00; }
+body.theme-forest .features-close-btn:hover { color: #7cfc00; }
+body.theme-forest .feature-item { background: #1a2e1a; border-color: #254025; }
+body.theme-forest .feature-item:hover { border-color: #7cfc00; }
+body.theme-forest .feature-text h4 { color: #7cfc00; }
+body.theme-forest .feature-text p { color: #aaff88; }
+
+/* Midnight Theme */
+body.theme-midnight .features-container { border-color: #6c5ce7; background: #0d0d1a; }
+body.theme-midnight .features-header { background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 100%); }
+body.theme-midnight .features-header h2 { color: #6c5ce7; }
+body.theme-midnight .features-close-btn:hover { color: #6c5ce7; }
+body.theme-midnight .feature-item { background: #1a1a2e; border-color: #252540; }
+body.theme-midnight .feature-item:hover { border-color: #6c5ce7; }
+body.theme-midnight .feature-text h4 { color: #6c5ce7; }
+body.theme-midnight .feature-text p { color: #b8b8e8; }
+
+/* Aurora Theme */
+body.theme-aurora .features-container { border-color: #00ff9f; background: #0a0a12; }
+body.theme-aurora .features-header { background: linear-gradient(135deg, #0a0a12 0%, #120a1f 100%); }
+body.theme-aurora .features-header h2 { color: #00ff9f; }
+body.theme-aurora .features-close-btn:hover { color: #00ff9f; }
+body.theme-aurora .feature-item { background: #0a0a12; border-color: #151020; }
+body.theme-aurora .feature-item:hover { border-color: #00ff9f; }
+body.theme-aurora .feature-text h4 { color: #00ff9f; }
+body.theme-aurora .feature-text p { color: #88ffe0; }
+
+/* Rose Theme */
+body.theme-rose .features-container { border-color: #ff6b9d; background: #1a0a10; }
+body.theme-rose .features-header { background: linear-gradient(135deg, #1a0a10 0%, #2d1520 100%); }
+body.theme-rose .features-header h2 { color: #ff6b9d; }
+body.theme-rose .features-close-btn:hover { color: #ff6b9d; }
+body.theme-rose .feature-item { background: #2d1520; border-color: #3a1a28; }
+body.theme-rose .feature-item:hover { border-color: #ff6b9d; }
+body.theme-rose .feature-text h4 { color: #ff6b9d; }
+body.theme-rose .feature-text p { color: #ffaacc; }
+
+/* Lemon Theme */
+body.theme-lemon .features-container { border-color: #fff200; background: #1a1a0a; }
+body.theme-lemon .features-header { background: linear-gradient(135deg, #1a1a0a 0%, #2d2d15 100%); }
+body.theme-lemon .features-header h2 { color: #fff200; }
+body.theme-lemon .features-close-btn:hover { color: #fff200; }
+body.theme-lemon .feature-item { background: #2d2d15; border-color: #3a3a1e; }
+body.theme-lemon .feature-item:hover { border-color: #fff200; }
+body.theme-lemon .feature-text h4 { color: #fff200; }
+body.theme-lemon .feature-text p { color: #ffff88; }
+
+/* Coral Theme */
+body.theme-coral .features-container { border-color: #ff7f50; background: #1a0f0a; }
+body.theme-coral .features-header { background: linear-gradient(135deg, #1a0f0a 0%, #2d1a15 100%); }
+body.theme-coral .features-header h2 { color: #ff7f50; }
+body.theme-coral .features-close-btn:hover { color: #ff7f50; }
+body.theme-coral .feature-item { background: #2d1a15; border-color: #3a221a; }
+body.theme-coral .feature-item:hover { border-color: #ff7f50; }
+body.theme-coral .feature-text h4 { color: #ff7f50; }
+body.theme-coral .feature-text p { color: #ffb399; }
+
+/* Lavender Theme */
+body.theme-lavender .features-container { border-color: #e6e6fa; background: #0f0a1a; }
+body.theme-lavender .features-header { background: linear-gradient(135deg, #0f0a1a 0%, #1a152d 100%); }
+body.theme-lavender .features-header h2 { color: #e6e6fa; }
+body.theme-lavender .features-close-btn:hover { color: #e6e6fa; }
+body.theme-lavender .feature-item { background: #1a152d; border-color: #252040; }
+body.theme-lavender .feature-item:hover { border-color: #e6e6fa; }
+body.theme-lavender .feature-text h4 { color: #e6e6fa; }
+body.theme-lavender .feature-text p { color: #d8d8f0; }
+
+/* Nord Theme */
+body.theme-nord .features-container { border-color: #88c0d0; background: #1a1f28; }
+body.theme-nord .features-header { background: linear-gradient(135deg, #1a1f28 0%, #2e3440 100%); }
+body.theme-nord .features-header h2 { color: #88c0d0; }
+body.theme-nord .features-close-btn:hover { color: #88c0d0; }
+body.theme-nord .feature-item { background: #2e3440; border-color: #3b4252; }
+body.theme-nord .feature-item:hover { border-color: #88c0d0; }
+body.theme-nord .feature-text h4 { color: #88c0d0; }
+body.theme-nord .feature-text p { color: #b8d8e8; }
+
+/* Dracula Theme */
+body.theme-dracula .features-container { border-color: #bd93f9; background: #0d0d12; }
+body.theme-dracula .features-header { background: linear-gradient(135deg, #0d0d12 0%, #1a1a2e 100%); }
+body.theme-dracula .features-header h2 { color: #bd93f9; }
+body.theme-dracula .features-close-btn:hover { color: #bd93f9; }
+body.theme-dracula .feature-item { background: #1a1a2e; border-color: #252540; }
+body.theme-dracula .feature-item:hover { border-color: #bd93f9; }
+body.theme-dracula .feature-text h4 { color: #bd93f9; }
+body.theme-dracula .feature-text p { color: #d8c8e8; }
+
+/* Monokai Theme */
+body.theme-monokai .features-container { border-color: #f92672; background: #1a1710; }
+body.theme-monokai .features-header { background: linear-gradient(135deg, #1a1710 0%, #2d2a1f 100%); }
+body.theme-monokai .features-header h2 { color: #f92672; }
+body.theme-monokai .features-close-btn:hover { color: #f92672; }
+body.theme-monokai .feature-item { background: #2d2a1f; border-color: #3a372a; }
+body.theme-monokai .feature-item:hover { border-color: #f92672; }
+body.theme-monokai .feature-text h4 { color: #f92672; }
+body.theme-monokai .feature-text p { color: #ff88aa; }
+
+/* Cyberpunk Theme */
+body.theme-cyberpunk .features-container { border-color: #ff00ff; background: #0a0012; }
+body.theme-cyberpunk .features-header { background: linear-gradient(135deg, #0a0012 0%, #12001f 100%); }
+body.theme-cyberpunk .features-header h2 { color: #ff00ff; }
+body.theme-cyberpunk .features-close-btn:hover { color: #ff00ff; }
+body.theme-cyberpunk .feature-item { background: #12001f; border-color: #1a0028; }
+body.theme-cyberpunk .feature-item:hover { border-color: #ff00ff; }
+body.theme-cyberpunk .feature-text h4 { color: #ff00ff; }
+body.theme-cyberpunk .feature-text p { color: #ff88ff; }
+
+/* Scrollbar styling for features modal */
+.features-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.features-container::-webkit-scrollbar-track {
+  background: #1a1a24;
+  border-radius: 4px;
+}
+
+.features-container::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.features-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* Ocean Theme */

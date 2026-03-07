@@ -1,6 +1,7 @@
 const columns = [];
 let currentColumns = columns;
 const selectedBookmarks = new Set();
+window.selectedBookmarks = selectedBookmarks; // Expose for render.js access
 let bookmarkVisitCounts = {};
 const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
 const PINS_KEY = "pinnedBookmarks";
@@ -343,6 +344,7 @@ function updateMultiSelectBar() {
     bar.style.display = "none";
   }
 }
+window.updateMultiSelectBar = updateMultiSelectBar;
 
 function setupMultiSelectListeners() {
   document.body.addEventListener("click", (e) => {
