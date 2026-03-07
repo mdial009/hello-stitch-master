@@ -16,7 +16,21 @@ function render(columns) {
 
     const summary = document.createElement("div");
     summary.className = "column-summary";
-    summary.textContent = col.title;
+    summary.setAttribute("data-tooltip", "Click to collapse/expand");
+    // Use escapeHtml to prevent XSS attacks from column titles
+    summary.innerHTML = typeof escapeHtml === 'function' ? escapeHtml(col.title) : col.title;
+    
+    // Add click to collapse/expand the column
+    summary.style.cursor = "pointer";
+    summary.addEventListener("click", function() {
+      this.classList.toggle("collapsed");
+      // Toggle the visibility of the ul element (bookmark list)
+      const ul = this.nextElementSibling;
+      if (ul && ul.tagName === 'UL') {
+        ul.style.display = ul.style.display === 'none' ? '' : 'none';
+      }
+    });
+    
     columnDiv.appendChild(summary);
 
     const ul = document.createElement("ul");
@@ -43,7 +57,9 @@ function render(columns) {
           
           // Display only the current (last) folder name, not the full path
           const pathParts = pathKey.split(" / ");
-          subfolderHeader.textContent = pathParts[pathParts.length - 1];
+          const subfolderName = pathParts[pathParts.length - 1];
+          // Use escapeHtml to prevent XSS attacks from subfolder names
+          subfolderHeader.innerHTML = typeof escapeHtml === 'function' ? escapeHtml(subfolderName) : subfolderName;
           
           // Calculate depth based on path separator " / "
           const depth = pathKey.split(" / ").length - 1;
@@ -88,7 +104,8 @@ function render(columns) {
           link.href = bm.url;
           link.className = "bookmark-link";
           link.setAttribute("data-url", bm.url);
-          link.textContent = bm.title;
+          // Use escapeHtml to prevent XSS attacks from bookmark titles
+          link.innerHTML = typeof escapeHtml === 'function' ? escapeHtml(bm.title) : bm.title;
           
           // Prepend favicon to link
           link.insertBefore(favicon, link.firstChild);
@@ -101,6 +118,36 @@ function render(columns) {
           urlDiv.textContent = cleanUrlForDisplay(bm.url);
           li.appendChild(urlDiv);
 
+          // AI Tags display - Get tags for this bookmark
+          const bmTags = window.tagsByUrl && window.tagsByUrl[bm.url];
+          if (bmTags && bmTags.length > 0) {
+            const tagsContainer = document.createElement("div");
+            tagsContainer.className = "bookmark-tags";
+            tagsContainer.style.display = "flex";
+            tagsContainer.style.flexWrap = "wrap";
+            tagsContainer.style.gap = "0.3em";
+            tagsContainer.style.marginTop = "0.3em";
+            
+            bmTags.forEach(tag => {
+              const tagSpan = document.createElement("span");
+              tagSpan.className = "bookmark-tag";
+              tagSpan.textContent = tag;
+              tagSpan.setAttribute("data-tag", tag);
+              tagSpan.style.cursor = "pointer";
+              tagSpan.title = "Click to filter by: " + tag;
+              tagSpan.addEventListener("click", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof filterByTag === "function") {
+                  filterByTag(tag);
+                }
+              });
+              tagsContainer.appendChild(tagSpan);
+            });
+            
+            li.appendChild(tagsContainer);
+          }
+
           // Add action buttons container
           const actionsDiv = document.createElement("div");
           actionsDiv.style.display = "flex";
@@ -111,6 +158,7 @@ function render(columns) {
           const pinBtn = document.createElement("button");
           pinBtn.className = "pin-btn";
           pinBtn.setAttribute("data-url", bm.url);
+          pinBtn.setAttribute("data-tooltip", "Pin bookmark to top");
           pinBtn.textContent = "☆";
           actionsDiv.appendChild(pinBtn);
 
@@ -118,6 +166,7 @@ function render(columns) {
           const copyBtn = document.createElement("button");
           copyBtn.className = "copy-url-btn";
           copyBtn.setAttribute("data-url", bm.url);
+          copyBtn.setAttribute("data-tooltip", "Copy URL to clipboard");
           copyBtn.textContent = "📋";
           actionsDiv.appendChild(copyBtn);
 
@@ -126,6 +175,7 @@ function render(columns) {
           editBtn.className = "edit-bookmark-btn";
           editBtn.setAttribute("data-url", bm.url);
           editBtn.setAttribute("data-title", bm.title);
+          editBtn.setAttribute("data-tooltip", "Edit bookmark");
           editBtn.textContent = "✎";
           actionsDiv.appendChild(editBtn);
 
@@ -133,6 +183,7 @@ function render(columns) {
           const deleteBtn = document.createElement("button");
           deleteBtn.className = "delete-bookmark-btn";
           deleteBtn.setAttribute("data-url", bm.url);
+          deleteBtn.setAttribute("data-tooltip", "Delete bookmark");
           deleteBtn.textContent = "✕";
           actionsDiv.appendChild(deleteBtn);
 
@@ -144,6 +195,7 @@ function render(columns) {
           checkbox.className = "bookmark-checkbox";
           checkbox.setAttribute("data-url", bm.url);
           checkbox.setAttribute("data-title", bm.title);
+          checkbox.setAttribute("data-tooltip", "Select for bulk actions");
           checkboxWrapper.appendChild(checkbox);
           actionsDiv.insertBefore(checkboxWrapper, actionsDiv.firstChild);
 

@@ -1,9 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <script>
+    // Immediately set the browser tab title from localStorage to avoid flash of default title
+    (function() {
+      var customTitle = localStorage.getItem('customTitle') || 'Hello, Stitch';
+      var now = new Date();
+      var dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+      var monthName = now.toLocaleDateString("en-US", { month: "long" });
+      var day = now.getDate();
+      var year = now.getFullYear();
+      var hours = now.getHours();
+      var minutes = now.getMinutes().toString().padStart(2, "0");
+      var ampm = hours >= 12 ? "PM" : "AM";
+      var hour12 = hours % 12 || 12;
+      document.title = customTitle + " today is " + dayName + " " + monthName + " " + day + ", " + year + " and the time is " + hour12 + ":" + minutes + " " + ampm;
+    })();
+  </script>
   <meta charset="utf-8" />
   <meta name="description" content="A beautiful bookmarks manager for Chrome and Firefox with customizable themes, work mode, and quick access to your favorite sites." />
-  <title>Hello, Stitch</title>
+  <title></title>
   <link rel="icon" type="image/png" sizes="16x16" href="icons/web/icons8-stitch-color-16.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/web/icons8-stitch-color-32.png" />
   <link rel="icon" type="image/png" sizes="48x48" href="icons/web/icons8-stitch-color-48.png" />
@@ -21,32 +37,38 @@
     <div class="spinner"></div>
     <span class="loading-text">Loading bookmarks...</span>
   </div>
+  
+  <!-- Bookmark Filter Dropdown Container - Fixed at Top Left -->
+  <div id="bookmark-filter-dropdown" class="filter-buttons"></div>
+  
   <div id="header">
     <h1 id="welcome"></h1>
-    <div id="timestamp">
+    <!-- <div id="timestamp">
       <span id="date"></span> - <span id="hours"></span>:<span id="minutes"></span>:<span id="seconds"></span> <span id="ampm"></span>
     </div>
-    <div id="day"></div>
+    <div id="day"></div> -->
+  </div> 
   
   <div id="search-container">
     <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Search bookmarks..." />
+      <input type="text" id="search-input" placeholder="Search bookmarks..." data-tooltip="Search bookmarks by title" />
       <span id="total-bookmark-count"></span>
     </div>
     <div class="quick-links">
-      <button class="search-button chatgpt-btn" id="chatgpt-button" title="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
-      <button class="search-button grok-btn" id="grok-button" title="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>
-      <button class="search-button reddit-btn" id="reddit-button" title="Open Reddit" aria-label="Open Reddit"><span class="btn-icon">🤖</span> Reddit</button>
-      <button class="search-button twitch-btn" id="twitch-button" title="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
-      <button class="search-button youtube-btn" id="youtube-button" title="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
+      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
+      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>
+      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><span class="btn-icon">🤖</span> Reddit</button>
+      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
+      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
     </div>
     <div class="filter-buttons"></div>
     <div class="import-export-buttons">
-      <button id="settings-button" class="small-button" title="Settings">⚙️ Settings</button>
+      <button id="settings-button" class="small-button" data-tooltip="Open settings">⚙️ Settings</button>
     </div>
+  </div>
   
   <div id="container"></div>
-  <button id="go-to-top">Top</button>
+<button id="go-to-top" data-tooltip="Scroll to top">Top</button>
   
   <div id="edit-modal">
     <form id="edit-form">
@@ -54,8 +76,8 @@
       <label>URL: <input type="text" id="edit-url" /></label>
       <label>Folder: <select id="edit-folder"></select></label>
       <div class="modal-footer">
-        <button type="button" id="edit-cancel">Cancel</button>
-        <button type="submit" id="edit-save">Save</button>
+        <button type="button" id="edit-cancel" data-tooltip="Discard changes">Cancel</button>
+        <button type="submit" id="edit-save" data-tooltip="Save changes">Save</button>
       </div>
     </form>
   </div>
@@ -98,15 +120,15 @@
         <div id="workmode-folder-list"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="workmode-cancel">Cancel</button>
-        <button type="submit" id="workmode-ok">OK</button>
+        <button type="button" id="workmode-cancel" data-tooltip="Cancel work mode settings">Cancel</button>
+        <button type="submit" id="workmode-ok" data-tooltip="Save work mode settings">OK</button>
       </div>
     </form>
   </div>
   
   <div id="multi-open-bar">
-    <button id="multi-open-button">Open</button>
-    <button id="multi-close-button">Close</button>
+    <button id="multi-open-button" data-tooltip="Open all selected bookmarks">Open</button>
+    <button id="multi-close-button" data-tooltip="Close selection mode">Close</button>
   </div>
   
   <!-- Settings Modal -->
@@ -114,7 +136,22 @@
     <div class="settings-container">
       <div class="settings-header">
         <h2>⚙️ Settings</h2>
-        <button id="settings-close" class="settings-close-btn">&times;</button>
+        <div class="settings-header-actions">
+          <span class="settings-header-label">Import/Export:</span>
+          <div class="settings-header-buttons">
+<button id="settings-export-button" class="small-settings-btn" title="Export Bookmarks" data-tooltip="Export Bookmarks">📤</button>
+            <button id="settings-import-button" class="small-settings-btn" title="Import Bookmarks" data-tooltip="Import Bookmarks">📥</button>
+            <input type="file" id="settings-import-file" accept=".json" style="display:none" />
+          </div>
+          <div class="settings-header-divider"></div>
+          <span class="settings-header-label">Sort:</span>
+          <select id="settings-sort-select" class="settings-header-sort" data-tooltip="Sort bookmarks by">
+            <option value="frequency">Most Visited</option>
+            <option value="date">Date Added</option>
+            <option value="alphabetical">A-Z</option>
+          </select>
+        </div>
+        <button id="settings-close" class="settings-close-btn" data-tooltip="Close settings">&times;</button>
       </div>
       <div class="settings-content">
         
@@ -207,7 +244,7 @@
           </div>
         </div>
         
-        <!-- Font Selection -->
+<!-- Font Selection -->
         <div class="settings-section">
           <h3>🔤 Font</h3>
           <div class="settings-grid">
@@ -221,33 +258,52 @@
               <div class="font-preview font-preview-fredoka">Aa</div>
               <span>Fredoka</span>
             </label>
-          </div>
-        </div>
-        
-        <!-- Sort Preference -->
-        <div class="settings-section">
-          <h3>📊 Default Sort</h3>
-          <select id="settings-sort-select" class="settings-select">
-            <option value="frequency">Most Visited</option>
-            <option value="date">Date Added</option>
-            <option value="alphabetical">Alphabetical</option>
-          </select>
-        </div>
-        
-        <!-- Import/Export Section -->
-        <div class="settings-section">
-          <h3>📥📤 Import / Export</h3>
-          <p class="settings-hint">Export your bookmarks to a JSON file or import from a previously exported file.</p>
-          <div class="settings-import-export-buttons">
-            <button id="settings-export-button" class="settings-button">📤 Export Bookmarks</button>
-            <button id="settings-import-button" class="settings-button">📥 Import Bookmarks</button>
-            <input type="file" id="settings-import-file" accept=".json" style="display:none" />
+            <label class="settings-option">
+              <input type="radio" name="font" value="poppins" />
+              <div class="font-preview font-preview-poppins">Aa</div>
+              <span>Poppins</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="roboto" />
+              <div class="font-preview font-preview-roboto">Aa</div>
+              <span>Roboto</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="open-sans" />
+              <div class="font-preview font-preview-open-sans">Aa</div>
+              <span>Open Sans</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="lato" />
+              <div class="font-preview font-preview-lato">Aa</div>
+              <span>Lato</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="montserrat" />
+              <div class="font-preview font-preview-montserrat">Aa</div>
+              <span>Montserrat</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="raleway" />
+              <div class="font-preview font-preview-raleway">Aa</div>
+              <span>Raleway</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="nunito" />
+              <div class="font-preview font-preview-nunito">Aa</div>
+              <span>Nunito</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="playfair" />
+              <div class="font-preview font-preview-playfair">Aa</div>
+              <span>Playfair</span>
+            </label>
           </div>
         </div>
         
       </div>
       <div class="settings-footer">
-        <button id="settings-save" class="settings-button">💾 Save Settings</button>
+        <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
       </div>
     </div>
   </div>

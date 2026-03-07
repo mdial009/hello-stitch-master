@@ -10,6 +10,225 @@ let isShowingPins = false;
 const tagsByUrl = JSON.parse(localStorage.getItem(TAGS_KEY) || "{}");
 window.tagsByUrl = tagsByUrl;
 
+// ============================================
+// AI Tagging System - Enhanced Categories
+// ============================================
+
+// Define category patterns for AI-like tagging
+const TAG_CATEGORIES = {
+  // Development & Tech
+  development: {
+    keywords: ['github', 'gitlab', 'stackoverflow', 'dev.to', 'codepen', 'jsfiddle', 'replit', 'vscode', 'npm', 'yarn', 'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'heroku', 'vercel', 'netlify', 'digitalocean', 'linode', 'cloudflare', 'vite', 'webpack', 'babel', 'eslint', 'prettier', 'chrome', 'firefox', 'safari', 'browser', 'api', 'rest', 'graphql', 'json', 'xml', 'html', 'css', 'javascript', 'typescript', 'python', 'java', 'rust', 'go', 'ruby', 'php', 'c++', 'c#', 'react', 'vue', 'angular', 'svelte', 'node', 'deno', 'django', 'flask', 'spring', 'rails', 'laravel', 'symfony', 'wordpress', 'shopify', 'magento', 'presta', 'wix', 'squarespace', 'webflow', 'framer', 'figma', 'sketch', 'adobe', 'photoshop', 'illustrator', 'indesign', 'xd', 'zeplin', 'invision', 'marvel', 'proto', 'miro', 'whimsical', 'excalidraw', 'draw.io', 'diagrams', 'uml', 'agile', 'scrum', 'jira', 'confluence', 'notion', 'asana', 'trello', 'monday', 'clickup', 'slack', 'discord', 'zoom', 'teams', 'meet', 'google docs', 'dropbox', 'onedrive', 'icloud', 'box', 'drive', 's3', 'storage', 'database', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'kafka', 'rabbitmq', 'nginx', 'apache', 'caddy', 'traefik', 'linux', 'unix', 'macos', 'windows', 'bash', 'shell', 'powershell', 'git', 'svn', 'mercurial', 'bitbucket', 'sourceforge', 'launchpad'],
+    domains: ['github.com', 'gitlab.com', 'stackoverflow.com', 'dev.to', 'codepen.io', 'jsfiddle.net', 'replit.com', 'codesandbox.io', 'glitch.com', 'stackblitz.io', 'playcode.io', 'jsbin.com', 'html5', 'w3schools', 'mdn', 'mozilla.org', 'nodejs.org', 'npmjs.com', 'yarnpkg.com', 'docker.com', 'kubernetes.io', 'aws.amazon.com', 'azure.microsoft.com', 'cloud.google.com', 'heroku.com', 'vercel.com', 'netlify.com', 'digitalocean.com', 'linode.com', 'cloudflare.com']
+  },
+  
+  // Video & Streaming
+  video: {
+    keywords: ['youtube', 'vimeo', 'twitch', 'netflix', 'hulu', 'disney', 'hbomax', 'prime', 'paramount', 'peacock', 'crunchyroll', 'funimation', 'anime', 'movie', 'film', 'series', 'stream', 'watch', 'video', 'tutorial', 'course', 'lecture', 'podcast', 'stream'],
+    domains: ['youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv', 'netflix.com', 'hulu.com', 'disneyplus.com', 'hbomax.com', 'primevideo.com', 'paramountplus.com', 'peacocktv.com', 'crunchyroll.com', 'funimation.com', 'anime', 'dailymotion.com', 'metacafe.com', 'vevo.com', 'mubi.com']
+  },
+  
+  // Social Media
+  social: {
+    keywords: ['twitter', 'x.com', 'facebook', 'instagram', 'reddit', 'linkedin', 'tiktok', 'snapchat', 'pinterest', 'tumblr', 'whatsapp', 'telegram', 'signal', 'messenger', 'wechat', 'viber', 'line', 'discord', 'slack', 'clubhouse', 'mastodon', 'threads', 'beereal', 'nextdoor', 'quora', 'medium', 'substack', 'patreon', 'ko-fi', 'buymeacoffee', 'gumroad', 'boosty'],
+    domains: ['twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'reddit.com', 'linkedin.com', 'tiktok.com', 'snapchat.com', 'pinterest.com', 'tumblr.com', 'whatsapp.com', 'telegram.org', 'signal.org', 'messenger.com', 'wechat.com', 'discord.com', 'slack.com', 'clubhouse.com', 'mastodon.social', 'threads.net', 'quora.com', 'medium.com', 'substack.com', 'patreon.com']
+  },
+  
+  // News & Media
+  news: {
+    keywords: ['news', 'bbc', 'cnn', 'nytimes', 'reuters', 'huffpost', 'guardian', 'washingtonpost', 'wsj', 'bloomberg', 'forbes', 'fortune', 'economist', 'time', 'newsweek', 'usatoday', 'nypost', 'latimes', 'abc', 'cbs', 'nbc', 'fox', 'msnbc', 'ap', 'afp', 'reuters', 'guardian', 'telegraph', 'independent', 'daily', 'journal', 'report', 'breitbart', 'dailywire', 'vox', 'buzzfeed', 'vice', 'huffpost', 'upworthy', 'boredpanda', 'listverse', 'cracked', 'theonion', 'clickhole'],
+    domains: ['bbc.com', 'cnn.com', 'nytimes.com', 'reuters.com', 'huffpost.com', 'theguardian.com', 'washingtonpost.com', 'wsj.com', 'bloomberg.com', 'forbes.com', 'fortune.com', 'economist.com', 'time.com', 'newsweek.com', 'usatoday.com', 'nypost.com', 'latimes.com', 'abcnews.go.com', 'cbsnews.com', 'nbcnews.com', 'foxnews.com', 'msnbc.com', 'apnews.com', 'afp.com']
+  },
+  
+  // Shopping & E-commerce
+  shopping: {
+    keywords: ['amazon', 'ebay', 'etsy', 'walmart', 'target', 'costco', 'bestbuy', 'home depot', 'lowes', 'ikea', 'wayfair', 'overstock', 'newegg', 'adorama', 'bhphotovideo', 'newegg', 'tigerdirect', 'monoprice', 'aliexpress', 'wish', 'wish.com', 'temu', 'shein', 'fashion', 'clothing', 'shoes', 'jewelry', 'watch', 'electronics', 'gadget', 'sale', 'deal', 'coupon', 'discount'],
+    domains: ['amazon.com', 'ebay.com', 'etsy.com', 'walmart.com', 'target.com', 'costco.com', 'bestbuy.com', 'homedepot.com', 'lowes.com', 'ikea.com', 'wayfair.com', 'overstock.com', 'newegg.com', 'adorama.com', 'bhphotovideo.com', 'tigerdirect.com', 'monoprice.com', 'aliexpress.com', 'wish.com', 'temu.com', 'shein.com', 'shopify.com', 'magento.com']
+  },
+  
+  // Productivity & Work
+  productivity: {
+    keywords: ['notion', 'asana', 'trello', 'monday', 'clickup', 'todoist', 'any.do', 'ticktick', 'google keep', 'evernote', 'onenote', 'bear', 'obsidian', 'roam', 'logseq', 'craft', ' Ulysses', 'ia writer', 'markdown', 'note', 'notes', 'task', 'tasks', 'project', 'kanban', 'gantt', 'calendar', 'calendly', '日程', 'schedule', 'reminder', 'pomodoro', 'focus', 'timer'],
+    domains: ['notion.so', 'asana.com', 'trello.com', 'monday.com', 'clickup.com', 'todoist.com', 'any.do', 'ticktick.com', 'keep.google.com', 'evernote.com', 'onenote.com', 'bear.app', 'obsidian.md', 'roamresearch.com', 'logseq.com', 'craft.do', 'ulysses.app', 'iawriter.com', 'calendly.com', 'calendar.google.com', 'outlook.live.com']
+  },
+  
+  // Finance & Crypto
+  finance: {
+    keywords: ['bank', 'banking', 'crypto', 'bitcoin', 'ethereum', 'btc', 'eth', 'coinbase', 'binance', 'kraken', 'webull', 'robinhood', 'fidelity', 'schwab', 'vanguard', 'etrade', ' Interactive Brokers', 'td', 'ameritrade', 'stocks', 'trading', 'investing', 'portfolio', 'finance', 'money', 'paypal', 'venmo', 'cashapp', 'zelle', 'wise', 'revolut', 'square', 'stripe', 'plaid', 'mint', 'ynab', 'personal capital', 'credit', 'loan', 'mortgage', 'insurance'],
+    domains: ['coinbase.com', 'binance.com', 'kraken.com', 'webull.com', 'robinhood.com', 'fidelity.com', 'schwab.com', 'vanguard.com', 'etrade.com', 'tdameritrade.com', 'paypal.com', 'venmo.com', 'cash.app', 'wise.com', 'revolut.com', 'stripe.com', 'plaid.com', 'mint.com', 'ynab.com', 'personalcapital.com']
+  },
+  
+  // Learning & Education
+  learning: {
+    keywords: ['course', 'learn', 'tutorial', 'education', 'coursera', 'udemy', 'skillshare', 'khanacademy', 'edx', 'udacity', 'pluralsight', 'lynda', 'linkedin learning', 'codecademy', 'datacamp', 'treehouse', 'freecodecamp', 'w3schools', 'tutorial', 'guide', 'how to', 'learn', 'teach', 'study', 'exam', 'test', 'quiz', 'certificate', 'degree', 'university', 'college', 'school', 'bootcamp', 'training'],
+    domains: ['coursera.org', 'udemy.com', 'skillshare.com', 'khanacademy.org', 'edx.org', 'udacity.com', 'pluralsight.com', 'lynda.com', 'linkedin.com/learning', 'codecademy.com', 'datacamp.com', 'teamtreehouse.com', 'freecodecamp.org', 'w3schools.com', 'tutorialspoint.com', 'geeksforgeeks.org', 'leetcode.com', 'hackerrank.com', 'codewars.com', 'exercism.io', 'kaggle.com']
+  },
+  
+  // Music & Audio
+  music: {
+    keywords: ['spotify', 'soundcloud', 'apple music', 'bandcamp', 'youtube music', 'pandora', 'deezer', 'tidal', 'napster', 'music', 'song', 'album', 'artist', 'playlist', 'podcast', 'audio', 'mp3', 'flac', 'lossless', 'streaming', 'listen', 'lyrics', 'chords', 'tabs', 'guitar', 'piano'],
+    domains: ['spotify.com', 'soundcloud.com', 'music.apple.com', 'bandcamp.com', 'music.youtube.com', 'pandora.com', 'deezer.com', 'tidal.com', 'napster.com', 'genius.com', 'azlyrics.com', 'lyricsfreak.com', 'songmeanings.com', 'musmatch.com', 'ultimate-guitar.com', 'musescore.com', 'noteflight.com']
+  },
+  
+  // Gaming
+  gaming: {
+    keywords: ['steam', 'epic games', 'gog', 'origin', 'uplay', 'battle.net', 'xbox', 'playstation', 'nintendo', 'switch', 'ps4', 'ps5', 'xbox one', 'series x', 'game', 'gaming', 'esports', 'twitch', 'discord', 'roblox', 'minecraft', 'fortnite', 'valorant', 'league', 'lol', 'dota', 'csgo', 'cs2', 'overwatch', 'apex', 'pubg', 'genshin', 'gacha', 'indie', 'game jam'],
+    domains: ['store.steampowered.com', 'epicgames.com', 'gog.com', 'origin.com', 'uplay.ubisoft.com', 'battle.net', 'xbox.com', 'playstation.com', 'nintendo.com', 'twitch.tv', 'discord.com', 'roblox.com', 'minecraft.net', 'fortnite.com', 'valorant.com', 'leagueoflegends.com', 'dota2.com', 'csgo.com', 'overwatch2.com', 'apexlegends.com', 'genshin.hoyoverse.com']
+  },
+  
+  // Health & Fitness
+  health: {
+    keywords: ['health', 'fitness', 'workout', 'exercise', 'gym', 'yoga', 'meditation', 'mindfulness', 'nutrition', 'diet', 'weight', 'running', 'cycling', 'swimming', 'sports', 'medical', 'doctor', 'hospital', 'clinic', 'pharmacy', 'prescription', 'therapy', 'mental health', 'anxiety', 'depression', 'sleep', 'wellness', 'vitamins', 'supplements'],
+    domains: ['myfitnesspal.com', 'strava.com', 'garmin.com', 'fitbit.com', 'whoop.com', 'apple.com/health', 'headspace.com', 'calm.com', ' Insight Timer', 'nutrition.gov', 'mayoclinic.org', 'webmd.com', 'healthline.com', 'medlineplus.gov', 'nih.gov', 'clevelandclinic.org']
+  },
+  
+  // Food & Cooking
+  food: {
+    keywords: ['recipe', 'cooking', 'food', 'restaurant', 'menu', 'chef', 'baking', 'cake', 'bread', 'pizza', 'pasta', 'asian', 'mexican', 'italian', 'indian', 'thai', 'chinese', 'japanese', 'korean', 'vietnamese', 'french', 'greek', 'turkish', 'delicious', 'yummy', 'tasty', 'meal', 'dinner', 'lunch', 'breakfast', 'snack', 'dessert'],
+    domains: ['allrecipes.com', 'foodnetwork.com', 'bonappetit.com', 'epicurious.com', 'serious eats.com', 'smittenkitchen.com', 'thepioneerwoman.com', 'bettycrocker.com', ' Pillsbury', 'marthastewart.com', 'jamieoliver.com', ' Gordon Ramsay', 'buzzfeed.com/tasty', 'tasty.co', 'yummly.com', 'cookpad.com', 'recipe.com', ' EatingWell', 'healthline.com/nutrition', 'nutrition.gov']
+  },
+  
+  // Travel
+  travel: {
+    keywords: ['travel', 'trip', 'vacation', 'hotel', 'airbnb', 'booking', 'flight', 'airline', 'airport', 'rental', 'car', 'train', 'bus', 'cruise', 'resort', 'destination', 'tourist', 'attraction', 'museum', 'park', 'beach', 'mountain', 'adventure', 'explore', 'backpack', 'itinerary', 'passport', 'visa', 'map', 'gps'],
+    domains: ['airbnb.com', 'booking.com', 'hotels.com', 'expedia.com', 'kayak.com', 'skyscanner.com', 'google.com/travel', 'tripadvisor.com', 'yelp.com', 'zomato.com', 'opentable.com', 'marriott.com', 'hilton.com', 'hyatt.com', 'airlines.com', 'delta.com', 'united.com', 'americanairlines.com', 'southwest.com', 'jetblue.com', 'britishairways.com', 'lufthansa.com', 'france.fr', 'japan.travel', 'visitscotland.com']
+  },
+  
+  // Design & Creative
+  design: {
+    keywords: ['design', 'graphic', 'logo', 'branding', 'illustration', 'art', 'drawing', 'painting', 'photo', 'photography', 'edit', 'filter', 'template', 'poster', 'flyer', 'banner', 'icon', 'font', 'typography', 'color', 'palette', 'ui', 'ux', 'interface', 'wireframe', 'mockup', 'prototype', 'dribbble', 'behance', 'artstation', 'deviantart', '500px', 'unsplash', 'pexels', 'pixabay'],
+    domains: ['dribbble.com', 'behance.net', 'artstation.com', 'deviantart.com', '500px.com', 'unsplash.com', 'pexels.com', 'pixabay.com', 'freepik.com', 'canva.com', 'adobe.com', 'figma.com', 'sketch.com', 'invisionapp.com', 'framer.com', 'webflow.com', 'squarespace.com', 'wix.com', 'webnode', 'weebly', 'webdesign']
+  },
+  
+  // Email & Communication
+  email: {
+    keywords: ['email', 'gmail', 'outlook', 'yahoo', 'hotmail', 'mail', 'inbox', 'message', 'newsletter', 'subscribe', 'unsubscribe', 'spam', 'phishing', 'attachment', 'send', 'receive', 'forward', 'reply', 'cc', 'bcc', 'smtp', 'imap', 'pop3'],
+    domains: ['gmail.com', 'outlook.com', 'live.com', 'hotmail.com', 'yahoo.com', 'protonmail.com', 'tutanota.com', 'zoho.com', 'mailchimp.com', 'buttondown.email', 'substack.com', 'mailerlite.com', 'sendinblue.com', 'getresponse.com', 'convertkit.com', 'activecampaign.com', 'drip.com', 'customer.io', 'iterable.com']
+  },
+  
+  // Cloud & Storage
+  cloud: {
+    keywords: ['cloud', 'storage', 'drive', 'dropbox', 'onedrive', 'icloud', 'box', 'sync', 'backup', 'upload', 'download', 'file', 'folder', 'share', 'collaborate', 'team', 'business', 'enterprise', 'saas', 'hosting', 'server', 'vps', 'dedicated', 'shared', 'wordpress', 'cpanel', 'plesk'],
+    domains: ['dropbox.com', 'drive.google.com', 'onedrive.live.com', 'icloud.com', 'box.com', 'sync.com', 'pcloud.com', 'tresorit.com', 'spideroak.com', 'backblaze.com', 'carbonite.com', 'IDrive', 'syncplicity', 'qnap.com', 'synology.com', 'westerndigital.com', 'seagate.com', 'wd.com']
+  },
+  
+  // Security & Privacy
+  security: {
+    keywords: ['security', 'privacy', 'vpn', 'proxy', 'encryption', 'password', '2fa', 'mfa', 'authenticator', 'firewall', 'antivirus', 'malware', 'phishing', 'hack', 'breach', 'vulnerability', 'exploit', 'patch', 'update', 'secure', 'safe', 'privacy', 'anonymous', 'tor', 'browser', 'incognito', 'private'],
+    domains: ['1password.com', 'lastpass.com', 'bitwarden.com', 'dashlane.com', 'nordpass.com', 'expressvpn.com', 'nordvpn.com', 'surfshark.com', 'cyberghostvpn.com', 'protonvpn.com', 'haveibeenpwned.com', 'twofactorauth.org', 'authy.com', 'duosecurity.com', 'okta.com', 'pingidentity.com', 'crowdstrike.com', 'sentinelone.com', 'malwarebytes.com', 'kaspersky.com', 'norton.com', 'mcafee.com', 'avg.com', 'avast.com']
+  }
+};
+
+/**
+ * Enhanced AI Tagging Function
+ * Categorizes bookmarks based on domain and keywords
+ * @param {Object} bm - Bookmark object with title and url properties
+ * @returns {Array} - Array of AI-generated tags
+ */
+function autoTagBookmark(bm) {
+  try {
+    const tags = new Set();
+    
+    // Extract domain from URL
+    let domain = '';
+    let urlLower = '';
+    try {
+      const urlObj = new URL(bm.url);
+      domain = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+      urlLower = bm.url.toLowerCase();
+    } catch (e) {
+      urlLower = bm.url.toLowerCase();
+    }
+    
+    const titleLower = (bm.title || '').toLowerCase();
+    const combinedText = titleLower + ' ' + urlLower;
+    
+    // Check each category for matches
+    for (const [category, config] of Object.entries(TAG_CATEGORIES)) {
+      // Check domain matches first (higher priority)
+      if (config.domains) {
+        for (const d of config.domains) {
+          if (domain.includes(d.toLowerCase().replace(/^www\./, ''))) {
+            tags.add(category);
+            break;
+          }
+        }
+      }
+      
+      // Check keyword matches
+      if (config.keywords) {
+        for (const keyword of config.keywords) {
+          if (combinedText.includes(keyword.toLowerCase())) {
+            tags.add(category);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Add some additional context tags based on URL patterns
+    if (urlLower.includes('login') || urlLower.includes('signin') || urlLower.includes('auth')) {
+      tags.add('login');
+    }
+    if (urlLower.includes('settings') || urlLower.includes('preferences') || urlLower.includes('config')) {
+      tags.add('settings');
+    }
+    if (urlLower.includes('blog') || urlLower.includes('post') || urlLower.includes('article')) {
+      tags.add('blog');
+    }
+    if (urlLower.includes('download') || urlLower.includes('install') || urlLower.includes('exe') || urlLower.includes('apk')) {
+      tags.add('download');
+    }
+    if (urlLower.includes('forum') || urlLower.includes('community') || urlLower.includes('discussion')) {
+      tags.add('forum');
+    }
+    
+    // Convert set to array, limit to max 4 tags
+    const tagArray = Array.from(tags).slice(0, 4);
+    
+    // Store tags
+    tagsByUrl[bm.url] = tagArray;
+    
+    return tagArray;
+  } catch (e) {
+    console.error('Error auto-tagging bookmark:', e);
+    return [];
+  }
+}
+
+/**
+ * Get all available AI tags/categories
+ * @returns {Array} - Array of available tag names
+ */
+function getAvailableTags() {
+  return Object.keys(TAG_CATEGORIES).concat(['login', 'settings', 'blog', 'download', 'forum']);
+}
+
+/**
+ * Filter bookmarks by AI tag
+ * @param {string} tag - Tag to filter by
+ */
+function filterByTag(tag) {
+  isShowingPins = false;
+  const normalizedTag = tag.toLowerCase();
+  
+  const filteredColumns = columns
+    .map(function(col) {
+      return {
+        ...col,
+        children: col.children.filter(function(bm) {
+          const bmTags = tagsByUrl[bm.url] || [];
+          return bmTags.some(t => t.toLowerCase() === normalizedTag);
+        }),
+      };
+    })
+    .filter(function(col) { return col.children.length > 0; });
+  
+  currentColumns = filteredColumns;
+  clearMultiSelect();
+  renderCurrent();
+}
+
 
 // Apply theme on DOM ready (after options.js is loaded)
 function applyThemeOnReady() {
@@ -80,12 +299,28 @@ chrome.bookmarks.getTree((items) => {
   const welcomeElement = document.getElementById("welcome");
   const CUSTOM_TITLE_KEY = "customTitle";
   const DEFAULT_TITLE = "Hello, Stitch";
+  
+  // Check for custom title saved in localStorage
+  const savedCustomTitle = localStorage.getItem(CUSTOM_TITLE_KEY);
+  const baseTitle = savedCustomTitle || DEFAULT_TITLE;
+  
   if (welcomeElement) {
-    const savedTitle = localStorage.getItem(CUSTOM_TITLE_KEY) || DEFAULT_TITLE;
-    welcomeElement.innerHTML = savedTitle
-      .split("")
-      .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
-      .join("");
+    // Generate dynamic title with date and time
+    const now = new Date();
+    const dayName = now.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    const monthName = now.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
+    const day = now.getDate();
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    
+    // Create formatted title with date and time, wrapping date and time in underlined spans
+    const formattedTitle = baseTitle + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+    
+    // Render the formatted title to the welcome element, preserving underline spans
+    welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
   }
   
   // Find the "Stitch" folder
@@ -501,9 +736,6 @@ document.addEventListener("DOMContentLoaded", function() {
       
       // Close modal
       settingsModal.classList.remove("active");
-      
-      // Show feedback
-      alert("Settings saved successfully!");
     });
   }
 
@@ -551,10 +783,26 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function renderTitle(titleText) {
     if (!welcomeElement) return;
-    welcomeElement.innerHTML = titleText
-      .split("")
-      .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
-      .join("");
+    
+    // Get current date and time for the formatted title
+    var now = new Date();
+    var dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+    var monthName = now.toLocaleDateString("en-US", { month: "long" });
+    var day = now.getDate();
+    var year = now.getFullYear();
+    var hours = now.getHours();
+    var minutes = now.getMinutes().toString().padStart(2, "0");
+    var ampm = hours >= 12 ? "PM" : "AM";
+    var hour12 = hours % 12 || 12;
+    
+    // Create formatted title with date and time, wrapping date and time in underlined spans
+    var formattedTitle = titleText + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+    
+    // Render the formatted title to the welcome element, preserving underline spans
+    welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
+    
+    // Also update the browser tab title with full format (without HTML)
+    document.title = titleText + " today is " + dayName + " " + monthName + " " + day + ", " + year + " and the time is " + hour12 + ":" + minutes + " " + ampm;
   }
 
   function loadCustomTitle() {
@@ -583,6 +831,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       function saveTitle() {
         const newTitle = input.value.trim() || DEFAULT_TITLE;
+        
         localStorage.setItem(CUSTOM_TITLE_KEY, newTitle);
         welcomeElement.classList.remove("editing");
         renderTitle(newTitle);
@@ -640,6 +889,7 @@ document.addEventListener("DOMContentLoaded", function() {
     { id: "grok-button", url: "https://grok.com/" },
     { id: "reddit-button", url: "https://www.reddit.com/" },
     { id: "twitch-button", url: "https://www.twitch.tv/" },
+    { id: "youtube-button", url: "https://www.youtube.com/" },
   ];
   quickLinks.forEach(function(link) {
     const btn = document.getElementById(link.id);
@@ -718,6 +968,30 @@ document.addEventListener("DOMContentLoaded", function() {
   updateWorkModeButton();
 });
 
+function renderTitleWithUnderline(formattedTitle) {
+  // Split the string but preserve the <span class="stitch-underline">...</span> tags
+  // We'll process the string to keep underline spans intact while applying character styling to the rest
+  
+  // Use a regex to split into: regular text (group 1) and underline spans (group 2)
+  // The pattern matches either:
+  // - Text outside of underline spans (captured)
+  // - The entire underline span with its content (captured)
+  const parts = formattedTitle.split(/(<span class="stitch-underline">[\s\S]*?<\/span>)/g);
+  
+  // Process each part - apply character styling only to non-underline parts
+  return parts.map(function(part, index) {
+    // If this is an underline span, preserve it as-is
+    if (part.includes('class="stitch-underline"')) {
+      return part;
+    }
+    // Otherwise, apply character-by-character styling
+    return part
+      .split("")
+      .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
+      .join("");
+  }).join("");
+}
+
 function updateTimestamp() {
   const now = new Date();
   document.getElementById("date").textContent = now.toLocaleDateString();
@@ -727,9 +1001,40 @@ function updateTimestamp() {
   document.getElementById("seconds").textContent = now.getSeconds().toString().padStart(2, "0");
   document.getElementById("ampm").textContent = hours >= 12 ? "PM" : "AM";
   document.getElementById("day").textContent = now.toLocaleDateString("en-US", { weekday: "long" });
+  
+  // Get custom title from localStorage or use default
+  const CUSTOM_TITLE_KEY = "customTitle";
+  const DEFAULT_TITLE = "Hello, Stitch";
+  const customTitle = localStorage.getItem(CUSTOM_TITLE_KEY) || DEFAULT_TITLE;
+  
+  // Format date and time
+  const dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+  const monthName = now.toLocaleDateString("en-US", { month: "long" });
+  const day = now.getDate();
+  const year = now.getFullYear();
+  const minutes = now.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  
+  // Create formatted title with date and time, wrapping date and time in underlined spans
+  const formattedTitle = customTitle + " today is <span class=\"stitch-underline\">" + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+  
+  // Update the welcome heading with custom title and date/time
+  const welcomeElement = document.getElementById("welcome");
+  if (welcomeElement) {
+    welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
+  }
 }
 
-setInterval(updateTimestamp, 1000);
+// Store interval ID for cleanup to prevent memory leaks
+const timestampIntervalId = setInterval(updateTimestamp, 1000);
+
+// Clean up interval on page unload to prevent memory leaks
+window.addEventListener('unload', function() {
+  if (timestampIntervalId) {
+    clearInterval(timestampIntervalId);
+  }
+});
 
 function filterBookmarks() {
   isShowingPins = false;
@@ -859,14 +1164,18 @@ function filterJobsOrMostVisited() {
 }
 
 function generateFilterButtons(folders) {
-  const filterButtonsContainer = document.querySelector(".filter-buttons");
+  const filterButtonsContainer = document.getElementById("bookmark-filter-dropdown");
+  if (!filterButtonsContainer) return;
   filterButtonsContainer.innerHTML = "";
 
   function makeBtn(config) {
     const btn = document.createElement("button");
     btn.className = "filter-button" + (config.extraClasses && config.extraClasses.length ? " " + config.extraClasses.join(" ") : "");
     if (config.id) btn.id = config.id;
-    if (config.title) btn.title = config.title;
+    if (config.title) {
+      btn.title = config.title;
+      btn.setAttribute("data-tooltip", config.title);
+    }
     btn.textContent = config.text;
     if (config.clickHandler) btn.addEventListener("click", config.clickHandler);
     return btn;
@@ -904,11 +1213,11 @@ function generateFilterButtons(folders) {
     if (rendered) filterButtonsContainer.appendChild(rendered);
   });
 
-  const resetButton = makeBtn({ text: "🔄 Reset", clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
+  const resetButton = makeBtn({ text: "🔄 Reset", title: "Show all bookmarks", clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
   const closeAllBtn = makeBtn({ id: "close-all-btn", text: "❌ Close All", title: "Collapse all folders", extraClasses: ["close-all-btn"], clickHandler: function() { document.querySelectorAll(".filter-buttons details[open]").forEach(function(d) { d.open = false; }); updateCloseAllVisibility(); } });
   const pinnedButton = makeBtn({ id: "filter-pinned", text: "📌 Pinned", title: "Show only pinned bookmarks", clickHandler: function() { filterPinned(); updateCloseAllVisibility(); } });
-  const clearPinsButton = makeBtn({ id: "clear-pins", text: "🗑️ Clear Pins", title: "Remove all pins", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
-  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Work Mode", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
+  const clearPinsButton = makeBtn({ id: "clear-pins", text: "🗑️ Clear Pins", title: "Remove all pinned bookmarks", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
+  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Work Mode", title: "Configure work mode settings", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
 
   [configureWorkModeButton, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) { filterButtonsContainer.appendChild(btn); });
 
@@ -1136,7 +1445,8 @@ function toggleWorkMode() {
 }
 
 // Check work mode every minute to automatically apply during configured hours
-setInterval(function() {
+// Store interval ID for cleanup to prevent memory leaks
+const workModeIntervalId = setInterval(function() {
   const workModeEnabled = JSON.parse(localStorage.getItem("workModeEnabled") || "false");
   const workModeFolders = JSON.parse(localStorage.getItem(WORK_MODE_KEY) || "[]");
   
@@ -1145,6 +1455,13 @@ setInterval(function() {
     autoApplyWorkMode();
   }
 }, 60000); // Check every 60 seconds
+
+// Clean up interval on page unload to prevent memory leaks
+window.addEventListener('unload', function() {
+  if (workModeIntervalId) {
+    clearInterval(workModeIntervalId);
+  }
+});
 
 // ===========================================
 // SETTINGS MODAL FUNCTIONALITY
@@ -1188,7 +1505,7 @@ function initSettingsModal() {
     }
   });
 
-  // Save button handler
+      // Save button handler
   if (settingsSave) {
     settingsSave.addEventListener("click", function() {
       // Save custom title
@@ -1199,11 +1516,34 @@ function initSettingsModal() {
         // Update the title in the header if it exists
         const welcomeElement = document.getElementById("welcome");
         if (welcomeElement) {
-          welcomeElement.innerHTML = newTitle
-            .split("")
-            .map(function(letter, i) { return "<span class=\"stitch-theme color" + (i % 8) + "\">" + letter + "</span>"; })
-            .join("");
+          // Get current date and time for the formatted title
+          var now = new Date();
+          var dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+          var monthName = now.toLocaleDateString("en-US", { month: "long" });
+          var day = now.getDate();
+          var year = now.getFullYear();
+          var hours = now.getHours();
+          var minutes = now.getMinutes().toString().padStart(2, "0");
+          var ampm = hours >= 12 ? "PM" : "AM";
+          var hour12 = hours % 12 || 12;
+          
+          // Create formatted title with date and time, wrapping date and time in underlined spans
+          var formattedTitle = newTitle + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+          
+          // Render the formatted title to the welcome element, preserving underline spans
+          welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
         }
+        // Also update the browser tab title with full format
+        var now = new Date();
+        var dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+        var monthName = now.toLocaleDateString("en-US", { month: "long" });
+        var day = now.getDate();
+        var year = now.getFullYear();
+        var hours = now.getHours();
+        var minutes = now.getMinutes().toString().padStart(2, "0");
+        var ampm = hours >= 12 ? "PM" : "AM";
+        var hour12 = hours % 12 || 12;
+        document.title = newTitle + " today is " + dayName + " " + monthName + " " + day + ", " + year + " and the time is " + hour12 + ":" + minutes + " " + ampm;
       }
 
       // Save theme
