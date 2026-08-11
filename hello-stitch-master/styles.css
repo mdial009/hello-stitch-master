@@ -11,7 +11,7 @@
 body {
   background-color: #030100;
   color: #333333;
-  font-family: 'Buka Bird', 'Fredoka', sans-serif;
+  font-family: 'Poppins', 'Buka Bird', sans-serif;
 }
 
 /* Ensure header elements have proper contrast on light background */
@@ -166,9 +166,20 @@ body.theme-forest .spinner {
 }
 
 #container.single-folder .dynamic-column {
-  flex-basis: 60vw;
-  max-width: 700px;
+  flex-basis: 100%;
+  max-width: 100%;
   min-width: 320px;
+  width: min(1100px, 100%);
+}
+
+#container.single-folder .dynamic-column ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+#container.single-folder .dynamic-column ul li {
+  width: 100%;
 }
 
 #container.two-folders {
@@ -330,12 +341,20 @@ li {
   flex-direction: column;
   flex-grow: 1;
   align-items: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 0.85rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+li + li {
+  margin-top: 0.5rem;
 }
 
 div.column {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
   flex: 1 1 300px;
   min-width: 220px;
@@ -539,6 +558,36 @@ div.column {
 .youtube-btn:hover {
   background-color: #fff;
   color: #ff0000;
+}
+
+.amazon-btn {
+  background-color: #ff9900;
+  color: #000;
+  border-color: #ff9900;
+}
+.amazon-btn:hover {
+  background-color: #fff;
+  color: #ff9900;
+}
+
+.gemini-btn {
+  background-color: #4285f4;
+  color: #fff;
+  border-color: #4285f4;
+}
+.gemini-btn:hover {
+  background-color: #fff;
+  color: #4285f4;
+}
+
+.quick-link-btn {
+  border-color: #888;
+  background-color: #222;
+  color: #fff;
+}
+.quick-link-btn:hover {
+  background-color: #fff;
+  color: #000;
 }
 
 /* Bookmark Action Buttons - Unified styling */
@@ -3144,8 +3193,37 @@ body.theme-forest .filter-buttons details details {
   background: rgba(255, 153, 0, 0.1);
 }
 
-.settings-option input {
+.settings-option input[type="radio"],
+.settings-option input[type="checkbox"] {
   display: none;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-field label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #252532;
+  color: #fff;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: #ff9900;
 }
 
 .settings-option span:last-child {

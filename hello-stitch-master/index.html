@@ -57,6 +57,8 @@
     <div class="quick-links">
       <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
       <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>
+      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><span class="btn-icon">🛒</span> Amazon</button>
+      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><span class="btn-icon">🤖</span> Gemini</button>
       <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><span class="btn-icon">🤖</span> Reddit</button>
       <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
       <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
@@ -262,7 +264,7 @@
               <span>Fredoka</span>
             </label>
             <label class="settings-option">
-              <input type="radio" name="font" value="poppins" />
+              <input type="radio" name="font" value="poppins" checked />
               <div class="font-preview font-preview-poppins">Aa</div>
               <span>Poppins</span>
             </label>
@@ -325,7 +327,7 @@
               <span>18px</span>
             </label>
             <label class="settings-option">
-              <input type="radio" name="fontSize" value="20" />
+              <input type="radio" name="fontSize" value="20" checked />
               <div class="font-size-preview font-size-20-preview">Aa</div>
               <span>20px</span>
             </label>
@@ -341,6 +343,24 @@
             </label>
           </div>
           <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
+        </div>
+
+        <div class="settings-section">
+          <h3>🔗 Custom Quick Links</h3>
+          <div class="settings-grid">
+            <div class="settings-field">
+              <label for="settings-quicklink-name">Name</label>
+              <input type="text" id="settings-quicklink-name" class="settings-input" placeholder="Button name" />
+            </div>
+            <div class="settings-field">
+              <label for="settings-quicklink-url">URL</label>
+              <input type="url" id="settings-quicklink-url" class="settings-input" placeholder="https://example.com" />
+            </div>
+          </div>
+          <button type="button" id="add-quicklink-button" class="settings-button" data-tooltip="Add a custom quick link">➕ Add Quick Link</button>
+          <p id="quicklink-error" class="settings-error"></p>
+          <div id="custom-quicklinks-list" class="custom-quicklinks-list"></div>
+          <p class="settings-hint">Add your own quick links and they will appear next to the other quick access buttons.</p>
         </div>
 
       </div>

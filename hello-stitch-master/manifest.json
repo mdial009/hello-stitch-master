@@ -27,7 +27,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "hello-stitch@example.com",
+      "id": "ext@xyz.stitch.hello-friend",
       "data_collection_permissions": {
         "required": ["none"]
       }

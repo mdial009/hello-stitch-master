@@ -711,15 +711,22 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       
       // Load font selection
-      const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
+      const savedFont = localStorage.getItem(FONT_KEY) || "poppins";
       document.querySelectorAll('input[name="font"]').forEach(function(radio) {
         radio.checked = radio.value === savedFont;
+      });
+      
+      // Load font size selection
+      const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "20";
+      document.querySelectorAll('input[name="fontSize"]').forEach(function(radio) {
+        radio.checked = radio.value === savedFontSize;
       });
       
       // Load sort preference
       const savedSort = localStorage.getItem(SORT_PREFERENCE_KEY) || "frequency";
       settingsSortSelect.value = savedSort;
       
+      renderCustomQuickLinksList();
       settingsModal.classList.add("active");
     });
   }
@@ -758,6 +765,12 @@ document.addEventListener("DOMContentLoaded", function() {
       const selectedFont = document.querySelector('input[name="font"]:checked');
       if (selectedFont) {
         applyFont(selectedFont.value);
+      }
+
+      // Save font size
+      const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
+      if (selectedFontSize) {
+        applyFontSize(selectedFontSize.value);
       }
       
       // Save sort preference
@@ -800,6 +813,66 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  const addQuicklinkButton = document.getElementById("add-quicklink-button");
+  const quicklinkNameInput = document.getElementById("settings-quicklink-name");
+  const quicklinkUrlInput = document.getElementById("settings-quicklink-url");
+  const quicklinkError = document.getElementById("quicklink-error");
+
+  function setQuicklinkError(message) {
+    if (quicklinkError) quicklinkError.textContent = message || "";
+  }
+
+  function isValidUrl(value) {
+    try {
+      const normalized = value.match(/^https?:\/\//i) ? value.trim() : "https://" + value.trim();
+      const parsed = new URL(normalized);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if (quicklinkNameInput) {
+    quicklinkNameInput.addEventListener("input", function() {
+      setQuicklinkError("");
+    });
+  }
+  if (quicklinkUrlInput) {
+    quicklinkUrlInput.addEventListener("input", function() {
+      setQuicklinkError("");
+    });
+  }
+
+  if (addQuicklinkButton) {
+    addQuicklinkButton.addEventListener("click", function() {
+      const label = quicklinkNameInput ? quicklinkNameInput.value.trim() : "";
+      const url = quicklinkUrlInput ? quicklinkUrlInput.value.trim() : "";
+      if (!label) {
+        setQuicklinkError("Please enter a button name.");
+        return;
+      }
+      if (!url) {
+        setQuicklinkError("Please enter a URL.");
+        return;
+      }
+      if (!isValidUrl(url)) {
+        setQuicklinkError("Please enter a valid URL starting with http:// or https://");
+        return;
+      }
+
+      const linkUrl = url.match(/^https?:\/\//i) ? url.trim() : "https://" + url.trim();
+      const links = loadCustomQuickLinks();
+      links.push({ label: label, url: linkUrl });
+      saveCustomQuickLinks(links);
+      renderCustomQuickLinks();
+      renderCustomQuickLinksList();
+      setQuicklinkError("");
+
+      if (quicklinkNameInput) quicklinkNameInput.value = "";
+      if (quicklinkUrlInput) quicklinkUrlInput.value = "";
+    });
+  }
+
   // Features Modal Functionality
   const featuresModal = document.getElementById("features-modal");
   const featuresInfoButton = document.getElementById("settings-info-button");
@@ -838,7 +911,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // Font dropdown functionality - now uses global function
 
   // Load saved font
-  const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
+  const savedFont = localStorage.getItem(FONT_KEY) || "poppins";
   applyFont(savedFont);
 
   function renderTitle(titleText) {
@@ -947,6 +1020,8 @@ document.addEventListener("DOMContentLoaded", function() {
   const quickLinks = [
     { id: "chatgpt-button", url: "https://chat.openai.com/" },
     { id: "grok-button", url: "https://grok.com/" },
+    { id: "amazon-button", url: "https://www.amazon.com/" },
+    { id: "gemini-button", url: "https://gemini.google.com/" },
     { id: "reddit-button", url: "https://www.reddit.com/" },
     { id: "twitch-button", url: "https://www.twitch.tv/" },
     { id: "youtube-button", url: "https://www.youtube.com/" },
@@ -964,6 +1039,10 @@ document.addEventListener("DOMContentLoaded", function() {
   
   const importFileInput = document.getElementById("import-file");
   if (importFileInput) importFileInput.addEventListener("change", handleImportFileChange);
+
+  // Render custom quick links from settings
+  renderCustomQuickLinks();
+  renderCustomQuickLinksList();
 
   document.addEventListener("keydown", function(e) {
     if (e.target.tagName === "INPUT" || e.target.isContentEditable) return;
@@ -992,7 +1071,79 @@ document.addEventListener("DOMContentLoaded", function() {
   const goToTopBtn = document.getElementById("go-to-top");
   const container = document.getElementById("container");
 
-  function updateGoToTopVisibility() {
+  function loadCustomQuickLinks() {
+  try {
+    return JSON.parse(localStorage.getItem("customQuickLinks") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCustomQuickLinks(links) {
+  localStorage.setItem("customQuickLinks", JSON.stringify(links || []));
+}
+
+function renderCustomQuickLinks() {
+  const quickLinksContainer = document.querySelector(".quick-links");
+  if (!quickLinksContainer) return;
+  quickLinksContainer.querySelectorAll(".quick-link-dynamic").forEach(function(btn) { btn.remove(); });
+
+  loadCustomQuickLinks().forEach(function(link) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "search-button quick-link-btn quick-link-dynamic";
+    button.setAttribute("data-tooltip", "Open " + link.label);
+    button.setAttribute("aria-label", "Open " + link.label);
+    button.innerHTML = "<span class=\"btn-icon\">🔗</span> " + link.label;
+    button.addEventListener("click", function() {
+      window.location.href = link.url;
+    });
+    quickLinksContainer.appendChild(button);
+  });
+}
+
+function renderCustomQuickLinksList() {
+  const listContainer = document.getElementById("custom-quicklinks-list");
+  if (!listContainer) return;
+
+  const links = loadCustomQuickLinks();
+  if (!links.length) {
+    listContainer.innerHTML = "<p class=\"settings-hint\">No custom quick links yet.</p>";
+    return;
+  }
+
+  listContainer.innerHTML = links.map(function(link, index) {
+    return "<div class=\"custom-quicklink-item\"><span>" + escapeHtml(link.label) + "</span><span>" + escapeHtml(link.url) + "</span><button type=\"button\" class=\"settings-button settings-button-secondary remove-quicklink-button\" data-index=\"" + index + "\">Remove</button></div>";
+  }).join("");
+
+  listContainer.querySelectorAll(".remove-quicklink-button").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const index = Number(this.getAttribute("data-index"));
+      const links = loadCustomQuickLinks();
+      if (index >= 0 && index < links.length) {
+        links.splice(index, 1);
+        saveCustomQuickLinks(links);
+        renderCustomQuickLinks();
+        renderCustomQuickLinksList();
+      }
+    });
+  });
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"'`]/g, function(match) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+      '`': '&#96;'
+    }[match];
+  });
+}
+
+function updateGoToTopVisibility() {
     const windowScrolled = window.scrollY > 50;
     const containerScrolled = container && container.scrollTop > 50;
     goToTopBtn.style.display = (windowScrolled || containerScrolled) ? "block" : "none";
@@ -1930,12 +2081,12 @@ function loadSettingsValues() {
   if (themeRadio) themeRadio.checked = true;
 
   // Load font
-  const savedFont = localStorage.getItem(FONT_KEY) || "buka-bird";
+  const savedFont = localStorage.getItem(FONT_KEY) || "poppins";
   const fontRadio = document.querySelector('input[name="font"][value="' + savedFont + '"]');
   if (fontRadio) fontRadio.checked = true;
 
   // Load font size
-  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "16";
+  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "20";
   const fontSizeRadio = document.querySelector('input[name="fontSize"][value="' + savedFontSize + '"]');
   if (fontSizeRadio) fontSizeRadio.checked = true;
 
@@ -1959,11 +2110,22 @@ function applyTheme(themeName) {
 }
 
 function applyFont(fontName) {
-  document.body.classList.remove("font-buka-bird", "font-fredoka");
+  document.body.classList.remove(
+    "font-buka-bird",
+    "font-fredoka",
+    "font-poppins",
+    "font-roboto",
+    "font-open-sans",
+    "font-lato",
+    "font-montserrat",
+    "font-raleway",
+    "font-nunito",
+    "font-playfair"
+  );
   if (fontName && fontName !== "buka-bird") {
     document.body.classList.add("font-" + fontName);
   }
-  localStorage.setItem("selectedFont", fontName || "buka-bird");
+  localStorage.setItem("selectedFont", fontName || "poppins");
 }
 
 // Initialize settings modal on DOM ready
@@ -1971,7 +2133,7 @@ document.addEventListener("DOMContentLoaded", function() {
   initSettingsModal();
   
   // Load saved font size
-  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "16";
+  const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "20";
   applyFontSize(savedFontSize);
   
   // Add event listeners for random buttons
@@ -2034,7 +2196,7 @@ function applyFontSize(fontSize) {
   if (fontSize && fontSize !== "16") {
     document.body.classList.add("font-size-" + fontSize);
   }
-  localStorage.setItem(FONT_SIZE_KEY, fontSize || "16");
+  localStorage.setItem(FONT_SIZE_KEY, fontSize || "20");
 }
 
 // Randomize Font Size Function
