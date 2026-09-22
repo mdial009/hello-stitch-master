@@ -133,10 +133,6 @@ function getSmartSuggestions(maxSuggestions = 5) {
   return uniqueSuggestions.slice(0, maxSuggestions);
 }
 
-const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
-const PINS_KEY = "pinnedBookmarks";
-const TAGS_KEY = "bookmarkTags";
-const FONT_SIZE_KEY = "selectedFontSize";
 const pinnedSet = new Set(JSON.parse(localStorage.getItem(PINS_KEY) || "[]"));
 let isShowingPins = false;
 const tagsByUrl = JSON.parse(localStorage.getItem(TAGS_KEY) || "{}");
