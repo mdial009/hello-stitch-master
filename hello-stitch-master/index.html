@@ -54,6 +54,32 @@
       <input type="text" id="search-input" placeholder="Search bookmarks..." data-tooltip="Search bookmarks by title" />
       <span id="total-bookmark-count"></span>
     </div>
+    <div class="search-enhancements">
+      <button id="search-history-toggle" class="search-enhancement-btn" title="Search History" data-tooltip="View your recent searches">
+        <span class="btn-icon">🕒</span> History
+      </button>
+      <button id="smart-suggestions-toggle" class="search-enhancement-btn" title="Smart Suggestions" data-tooltip="AI-powered suggestions based on your usage">
+        <span class="btn-icon">💡</span> Suggestions
+      </button>
+    </div>
+    <div id="search-history-panel" class="search-panel">
+      <div class="panel-header">
+        <h3>Search History</h3>
+        <button id="clear-history-btn" class="small-button" title="Clear all search history">Clear History</button>
+      </div>
+      <div id="search-history-container" class="panel-content">
+        <div class="empty-history">No search history yet</div>
+      </div>
+    </div>
+    <div id="smart-suggestions-panel" class="search-panel">
+      <div class="panel-header">
+        <h3>Smart Suggestions</h3>
+        <span class="suggestion-hint">Based on your recent searches and usage patterns</span>
+      </div>
+      <div id="smart-suggestions-container" class="panel-content">
+        <div class="empty-suggestions">No suggestions yet</div>
+      </div>
+    </div>
     <div class="quick-links">
       <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
       <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>

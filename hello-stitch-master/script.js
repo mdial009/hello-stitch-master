@@ -8,6 +8,135 @@ const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
 const PINS_KEY = "pinnedBookmarks";
 const TAGS_KEY = "bookmarkTags";
 const FONT_SIZE_KEY = "selectedFontSize";
+const SEARCH_HISTORY_KEY = "searchHistory";
+const USAGE_PATTERNS_KEY = "usagePatterns";
+
+// Initialize search history and usage patterns if not exist
+if (!localStorage.getItem(SEARCH_HISTORY_KEY)) {
+  localStorage.setItem(SEARCH_HISTORY_KEY, '[]');
+}
+if (!localStorage.getItem(USAGE_PATTERNS_KEY)) {
+  localStorage.setItem(USAGE_PATTERNS_KEY, '{}');
+}
+
+/**
+ * Add a search term to the persistent search history
+ * @param {string} term - The search term to add
+ */
+function addToSearchHistory(term) {
+  if (!term || term.trim() === '') return;
+  
+  term = term.trim();
+  const history = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+  
+  const existingEntry = history.find(item => item.term === term);
+  if (existingEntry) {
+    existingEntry.count++;
+    existingEntry.timestamp = Date.now();
+  } else {
+    history.push({
+      term: term,
+      count: 1,
+      timestamp: Date.now()
+    });
+  }
+  
+  // Keep only the last 10 searches
+  if (history.length > 10) {
+    history.splice(0, history.length - 10);
+  }
+  
+  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+}
+
+/**
+ * Get the search history from localStorage
+ * @returns {Array} Array of search history objects
+ */
+function getSearchHistory() {
+  return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+}
+
+/**
+ * Record a bookmark access pattern for smart suggestions
+ * @param {string} url - The bookmark URL to track
+ */
+function recordUsagePattern(url) {
+  if (!url) return;
+  
+  const patterns = JSON.parse(localStorage.getItem(USAGE_PATTERNS_KEY) || '{}');
+  
+  if (!patterns[url]) {
+    patterns[url] = {
+      accessCount: 0,
+      lastAccessed: Date.now(),
+      title: ''
+    };
+  }
+  
+  patterns[url].accessCount++;
+  patterns[url].lastAccessed = Date.now();
+  
+  localStorage.setItem(USAGE_PATTERNS_KEY, JSON.stringify(patterns));
+}
+
+/**
+ * Get smart suggestions based on search history and usage patterns
+ * @param {number} maxSuggestions - Maximum number of suggestions to return
+ * @returns {Array} Array of suggestion objects
+ */
+function getSmartSuggestions(maxSuggestions = 5) {
+  const history = getSearchHistory();
+  const patterns = JSON.parse(localStorage.getItem(USAGE_PATTERNS_KEY) || '{}');
+  
+  const suggestions = [];
+  
+  // Add recent search suggestions (highest priority)
+  history.slice(0, 3).forEach(item => {
+    suggestions.push({
+      type: 'search',
+      term: item.term,
+      score: item.count,
+      source: 'search-history'
+    });
+  });
+  
+  // Add frequently accessed bookmarks (medium priority)
+  Object.keys(patterns).sort((a, b) => patterns[b].accessCount - patterns[a].accessCount).slice(0, 3).forEach(url => {
+    const pattern = patterns[url];
+    const bookmark = columns.flatMap(col => col.children).find(bm => bm.url === url);
+    if (bookmark) {
+      suggestions.push({
+        type: 'bookmark',
+        bookmark: bookmark,
+        accessCount: pattern.accessCount,
+        lastAccessed: pattern.lastAccessed,
+        source: 'usage-pattern'
+      });
+    }
+  });
+  
+  // Remove duplicates while preserving order
+  const uniqueSuggestions = [];
+  const seen = new Set();
+  
+  suggestions.forEach(suggestion => {
+    if (suggestion.type === 'search' && !seen.has(`search:${suggestion.term}`)) {
+      seen.add(`search:${suggestion.term}`);
+      uniqueSuggestions.push(suggestion);
+    } else if (suggestion.type === 'bookmark' && suggestion.bookmark?.url && !seen.has(`bookmark:${suggestion.bookmark.url}`)) {
+      seen.add(`bookmark:${suggestion.bookmark.url}`);
+      uniqueSuggestions.push(suggestion);
+    }
+  });
+  
+  return uniqueSuggestions.slice(0, maxSuggestions);
+}
+
+const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
+const PINS_KEY = "pinnedBookmarks";
+const TAGS_KEY = "bookmarkTags";
+const FONT_SIZE_KEY = "selectedFontSize";
 const pinnedSet = new Set(JSON.parse(localStorage.getItem(PINS_KEY) || "[]"));
 let isShowingPins = false;
 const tagsByUrl = JSON.parse(localStorage.getItem(TAGS_KEY) || "{}");
@@ -1177,6 +1306,63 @@ function updateGoToTopVisibility() {
 
   autoApplyWorkMode();
   updateWorkModeButton();
+
+  // Search History and Smart Suggestions initialization
+  const searchHistoryToggle = document.getElementById("search-history-toggle");
+  const smartSuggestionsToggle = document.getElementById("smart-suggestions-toggle");
+  const clearHistoryBtn = document.getElementById("clear-history-btn");
+
+  if (searchHistoryToggle) {
+    searchHistoryToggle.addEventListener("click", function(e) {
+      e.stopPropagation();
+      this.classList.toggle("active");
+      const panel = document.getElementById("search-history-panel");
+      if (panel) {
+        panel.classList.toggle("visible");
+        if (panel.classList.contains("visible")) {
+          updateSearchHistoryUI();
+        }
+      }
+    });
+  }
+
+  if (smartSuggestionsToggle) {
+    smartSuggestionsToggle.addEventListener("click", function(e) {
+      e.stopPropagation();
+      this.classList.toggle("active");
+      const panel = document.getElementById("smart-suggestions-panel");
+      if (panel) {
+        panel.classList.toggle("visible");
+        if (panel.classList.contains("visible")) {
+          updateSmartSuggestionsUI();
+        }
+      }
+    });
+  }
+
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      if (confirm("Clear all search history?")) {
+        clearSearchHistory();
+        showToast("Search history cleared", "success");
+      }
+    });
+  }
+
+  // Close panels when clicking outside
+  document.addEventListener("click", function(e) {
+    const searchPanel = document.getElementById("search-history-panel");
+    const suggestionsPanel = document.getElementById("smart-suggestions-panel");
+    if (searchPanel && !searchPanel.contains(e.target) && e.target !== searchHistoryToggle) {
+      searchPanel.classList.remove("visible");
+      if (searchHistoryToggle) searchHistoryToggle.classList.remove("active");
+    }
+    if (suggestionsPanel && !suggestionsPanel.contains(e.target) && e.target !== smartSuggestionsToggle) {
+      suggestionsPanel.classList.remove("visible");
+      if (smartSuggestionsToggle) smartSuggestionsToggle.classList.remove("active");
+    }
+  });
 });
 
 function renderTitleWithUnderline(formattedTitle) {
@@ -1264,6 +1450,11 @@ function filterBookmarks() {
   isShowingPins = false;
   const input = document.getElementById("search-input").value.trim().toLowerCase();
   const normalizedInput = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  // Add to search history if there's meaningful input
+  if (input && input.length > 1) {
+    addToSearchHistory(input);
+  }
 
   const filteredColumns = columns
     .map(function(col) {
@@ -1312,6 +1503,211 @@ function filterBy(category) {
   
   clearMultiSelect();
   renderCurrent();
+}
+
+// Search History Management
+function getSearchHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function clearSearchHistory() {
+  localStorage.setItem(SEARCH_HISTORY_KEY, "[]");
+  updateSearchHistoryUI();
+}
+
+function updateSearchHistoryUI() {
+  const historyContainer = document.getElementById("search-history-container");
+  if (!historyContainer) return;
+  
+  const history = getSearchHistory();
+  historyContainer.innerHTML = "";
+  
+  if (history.length === 0) {
+    historyContainer.innerHTML = '<div class="empty-history">No search history yet</div>';
+    return;
+  }
+  
+  history.forEach(item => {
+    const historyItem = document.createElement("div");
+    historyItem.className = "search-history-item";
+    historyItem.innerHTML = `
+      <span class="history-term" data-term="${item.term}">${item.term}</span>
+      <span class="history-count">${item.count > 1 ? `${item.count} searches` : '1 search'}</span>
+      <button class="history-clear-btn" data-term="${item.term}" title="Clear from history">×</button>
+    `;
+    
+    historyItem.querySelector('.history-term').addEventListener('click', function() {
+      document.getElementById("search-input").value = this.dataset.term;
+      filterBookmarks();
+    });
+    
+    historyItem.querySelector('.history-clear-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      removeFromSearchHistory(this.dataset.term);
+    });
+    
+    historyContainer.appendChild(historyItem);
+  });
+}
+
+function removeFromSearchHistory(term) {
+  const history = getSearchHistory();
+  const filtered = history.filter(item => item.term !== term);
+  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(filtered));
+  updateSearchHistoryUI();
+}
+
+function updateSearchHistoryToggle() {
+  const toggleBtn = document.getElementById("search-history-toggle");
+  if (!toggleBtn) return;
+  
+  const history = getSearchHistory();
+  toggleBtn.classList.toggle("has-history", history.length > 0);
+}
+
+// Usage Patterns Management
+function recordUsagePattern(bookmarkUrl) {
+  const patterns = JSON.parse(localStorage.getItem(USAGE_PATTERNS_KEY) || "{}");
+  
+  if (!patterns[bookmarkUrl]) {
+    patterns[bookmarkUrl] = { accessCount: 0, lastAccessed: Date.now() };
+  }
+  
+  patterns[bookmarkUrl].accessCount++;
+  patterns[bookmarkUrl].lastAccessed = Date.now();
+  
+  // Keep only most accessed bookmarks (top 50)
+  const sorted = Object.entries(patterns)
+    .sort((a, b) => b[1].accessCount - a[1].accessCount)
+    .slice(0, 50)
+    .reduce((acc, [url, data]) => {
+      acc[url] = data;
+      return acc;
+    }, {});
+  
+  localStorage.setItem(USAGE_PATTERNS_KEY, JSON.stringify(sorted));
+}
+
+function getUsagePatterns() {
+  try {
+    return JSON.parse(localStorage.getItem(USAGE_PATTERNS_KEY) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function getSmartSuggestions() {
+  const history = getSearchHistory();
+  const patterns = getUsagePatterns();
+  const suggestions = [];
+  
+  // Get top recent searches
+  const recentSearches = history.slice(0, 3).map(item => item.term);
+  
+  // Get most accessed bookmarks
+  const recentAccesses = Object.entries(patterns)
+    .sort((a, b) => b[1].lastAccessed - a[1].lastAccessed)
+    .slice(0, 5)
+    .map(([url]) => url);
+  
+  // Add recent searches to suggestions
+  recentSearches.forEach(term => {
+    suggestions.push({ type: 'search', term });
+  });
+  
+  // Add frequently accessed bookmarks
+  recentAccesses.forEach(url => {
+    const bookmark = columns.flatMap(col => col.children).find(bm => bm.url === url);
+    if (bookmark) {
+      suggestions.push({ type: 'bookmark', bookmark });
+    }
+  });
+  
+  // Deduplicate while preserving order
+  const seen = new Set();
+  return suggestions.filter(suggestion => {
+    const key = suggestion.type === 'search' ? suggestion.term : suggestion.bookmark.url;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 6); // Limit to 6 suggestions
+}
+
+function updateSmartSuggestionsUI() {
+  const suggestionsContainer = document.getElementById("smart-suggestions-container");
+  if (!suggestionsContainer) return;
+  
+  const suggestions = getSmartSuggestions();
+  suggestionsContainer.innerHTML = "";
+  
+  if (suggestions.length === 0) {
+    suggestionsContainer.innerHTML = '<div class="empty-suggestions">No suggestions yet</div>';
+    return;
+  }
+  
+  suggestions.forEach(suggestion => {
+    const suggestionEl = document.createElement("div");
+    suggestionEl.className = "smart-suggestion";
+    
+    if (suggestion.type === 'search') {
+      suggestionEl.innerHTML = `
+        <span class="suggestion-icon">🔍</span>
+        <span class="suggestion-text">Search for "${suggestion.term}"</span>
+      `;
+      suggestionEl.addEventListener('click', function() {
+        document.getElementById("search-input").value = suggestion.term;
+        filterBookmarks();
+      });
+    } else {
+      suggestionEl.innerHTML = `
+        <img class="suggestion-favicon" src="${suggestion.bookmark.faviconUrl || getFaviconUrl(suggestion.bookmark.url)}" alt="">
+        <div class="suggestion-info">
+          <span class="suggestion-title">${suggestion.bookmark.title}</span>
+          <span class="suggestion-url">${suggestion.bookmark.url.replace(/^https?:\/\//, '')}</span>
+        </div>
+      `;
+      suggestionEl.addEventListener('click', function() {
+        window.open(suggestion.bookmark.url, '_blank');
+        // Record usage pattern when bookmark is opened
+        recordUsagePattern(suggestion.bookmark.url);
+      });
+    }
+    
+    suggestionsContainer.appendChild(suggestionEl);
+  });
+}
+
+function updateSearchHistoryAndSuggestionsUI() {
+  updateSearchHistoryUI();
+  updateSmartSuggestionsUI();
+}
+
+function showSearchHistoryPanel() {
+  const historyPanel = document.getElementById("search-history-panel");
+  const searchContainer = document.getElementById("search-container");
+  if (!historyPanel || !searchContainer) return;
+  
+  historyPanel.style.display = historyPanel.style.display === 'none' ? 'block' : 'none';
+  
+  if (historyPanel.style.display === 'block') {
+    updateSearchHistoryUI();
+  }
+}
+
+function showSmartSuggestionsPanel() {
+  const suggestionsPanel = document.getElementById("smart-suggestions-panel");
+  const searchContainer = document.getElementById("search-container");
+  if (!suggestionsPanel || !searchContainer) return;
+  
+  suggestionsPanel.style.display = suggestionsPanel.style.display === 'none' ? 'block' : 'none';
+  
+  if (suggestionsPanel.style.display === 'block') {
+    updateSmartSuggestionsUI();
+  }
 }
 
 function filterMostVisited() {
