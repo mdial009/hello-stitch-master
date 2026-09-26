@@ -107,6 +107,123 @@ function getFaviconUrl(url) {
   }
 }
 
+function getFolderIcon(folderTitle) {
+  const title = String(folderTitle || "").toLowerCase();
+  let icon = "📁";
+  let color = "#ff9900";
+
+  if (title.includes("work") || title.includes("job")) {
+    icon = "💼";
+    color = "#4caf50";
+  } else if (title.includes("social") || title.includes("facebook") || title.includes("twitter") || title.includes("instagram")) {
+    icon = "👥";
+    color = "#2196f3";
+  } else if (title.includes("video") || title.includes("youtube") || title.includes("twitch")) {
+    icon = "🎬";
+    color = "#f44336";
+  } else if (title.includes("music") || title.includes("spotify") || title.includes("sound")) {
+    icon = "🎵";
+    color = "#e91e63";
+  } else if (title.includes("dev") || title.includes("code") || title.includes("github") || title.includes("stack")) {
+    icon = "💻";
+    color = "#00bcd4";
+  } else if (title.includes("news") || title.includes("blog") || title.includes("rss")) {
+    icon = "📰";
+    color = "#ff9800";
+  } else if (title.includes("shop") || title.includes("store") || title.includes("amazon")) {
+    icon = "🛒";
+    color = "#ff5722";
+  } else if (title.includes("learn") || title.includes("edu") || title.includes("course")) {
+    icon = "📚";
+    color = "#9c27b0";
+  } else if (title.includes("game") || title.includes("play") || title.includes("steam")) {
+    icon = "🎮";
+    color = "#673ab7";
+  } else if (title.includes("travel") || title.includes("map") || title.includes("flight")) {
+    icon = "✈️";
+    color = "#03a9f4";
+  } else if (title.includes("food") || title.includes("recipe") || title.includes("restaurant")) {
+    icon = "🍕";
+    color = "#ff5722";
+  } else if (title.includes("finance") || title.includes("bank") || title.includes("money")) {
+    icon = "💰";
+    color = "#4caf50";
+  } else if (title.includes("health") || title.includes("fitness") || title.includes("medical")) {
+    icon = "🏥";
+    color = "#f44336";
+  } else if (title.includes("art") || title.includes("design") || title.includes("photo")) {
+    icon = "🎨";
+    color = "#e91e63";
+  } else if (title.includes("tool") || title.includes("util") || title.includes("helper")) {
+    icon = "🔧";
+    color = "#607d8b";
+  } else if (title.includes("important") || title.includes("urgent") || title.includes("priority")) {
+    icon = "⭐";
+    color = "#ffc107";
+  } else if (title.includes("archive") || title.includes("old") || title.includes("backup")) {
+    icon = "📦";
+    color = "#795548";
+  } else if (title.includes("temp") || title.includes("tmp") || title.includes("scratch")) {
+    icon = "🗑️";
+    color = "#9e9e9e";
+  }
+
+  return { icon: icon, color: color };
+}
+
+function getBookmarkAge(dateAdded) {
+  try {
+    if (!dateAdded) return null;
+    const now = Date.now();
+    const diffMs = now - dateAdded;
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    let label = "";
+    let className = "";
+    let title = "";
+
+    if (diffSeconds < 60) {
+      label = "Just now";
+      className = "new";
+      title = "Added less than a minute ago";
+    } else if (diffMinutes < 60) {
+      label = diffMinutes + "m";
+      className = "new";
+      title = "Added " + diffMinutes + " minute(s) ago";
+    } else if (diffHours < 24) {
+      label = diffHours + "h";
+      className = "new";
+      title = "Added " + diffHours + " hour(s) ago";
+    } else if (diffDays < 7) {
+      label = diffDays + "d";
+      className = "recent";
+      title = "Added " + diffDays + " day(s) ago";
+    } else if (diffWeeks < 4) {
+      label = diffWeeks + "w";
+      className = "recent";
+      title = "Added " + diffWeeks + " week(s) ago";
+    } else if (diffMonths < 12) {
+      label = diffMonths + "mo";
+      className = "recent";
+      title = "Added " + diffMonths + " month(s) ago";
+    } else {
+      label = diffYears + "y";
+      className = "old";
+      title = "Added " + diffYears + " year(s) ago";
+    }
+
+    return { label: label, className: className, title: title };
+  } catch (e) {
+    return null;
+  }
+}
+
 function debounce(func, delay) {
   let timeout;
   return (...args) => {

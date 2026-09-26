@@ -1,0 +1,784 @@
+    settingsButton.addEventListener("click", function() {
+      settingsTitleInput.value = getCustomTitle();
+
+      const savedTheme = getSelectedTheme();
+      document.querySelectorAll('input[name="theme"]').forEach(function(radio) {
+        radio.checked = radio.value === savedTheme;
+      });
+
+      const savedFont = getSelectedFont();
+      document.querySelectorAll('input[name="font"]').forEach(function(radio) {
+        radio.checked = radio.value === savedFont;
+      });
+
+      const savedFontSize = getSelectedFontSize();
+      document.querySelectorAll('input[name="fontSize"]').forEach(function(radio) {
+        radio.checked = radio.value === savedFontSize;
+      });
+
+      const savedSort = getSortPreference();
+      settingsSortSelect.value = savedSort;
+
+      const compactModeToggle = document.getElementById("header-compact-mode-toggle");
+      if (compactModeToggle) {
+        compactModeToggle.checked = loadCompactMode();
+      }
+
+      updateFontPreviewBadge(getSelectedFont());
+
+      renderCustomQuickLinksList();
+      updateCategoryDatalist();
+      openModal(settingsModal, { bodyClass: "settings-open", containerSelector: ".settings-container" });
+
+      settingsHasChanges = false;
+      updateSettingsStatus();
+    });
+  }
+
+  // Close settings modal
+  if (settingsClose) {
+    settingsClose.addEventListener("click", function() {
+      closeModal(settingsModal, { bodyClass: "settings-open" });
+    });
+  }
+
+  // Close settings modal when clicking outside
+  if (settingsModal) {
+    settingsModal.addEventListener("click", function(e) {
+      if (e.target === settingsModal) {
+        closeModal(settingsModal, { bodyClass: "settings-open" });
+      }
+    });
+  }
+
+  document.addEventListener("keydown", function(e) {
+    if (e.target.tagName === "INPUT" || e.target.isContentEditable) return;
+
+    if (e.key === "Escape") {
+      if (settingsModal && settingsModal.classList.contains("active")) {
+        closeModal(settingsModal, { bodyClass: "settings-open" });
+      } else if (featuresModal && featuresModal.classList.contains("active")) {
+        closeModal(featuresModal);
+      } else if (editModal && editModal.classList.contains("active")) {
+        closeModal(editModal);
+      } else if (workModeModal && workModeModal.classList.contains("active")) {
+        closeModal(workModeModal);
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+      document.querySelectorAll(".bookmark-checkbox").forEach(function(cb) { if (!cb.checked) cb.click(); });
+      e.preventDefault();
+    } else if (e.key === "o" && window.selectedBookmarks.size) {
+      openTabsSafely(Array.from(window.selectedBookmarks));
+    } else if (e.key === "c") {
+      clearMultiSelect();
+    } else if (e.key === ",") {
+      const settingsModal = document.getElementById("settings-modal");
+      if (settingsModal) {
+        settingsModal.classList.toggle("active");
+        document.body.classList.toggle("settings-open");
+      }
+    }
+  });
+  const settingsTabs = document.querySelectorAll(".settings-tab");
+  const settingsPanels = document.querySelectorAll(".settings-tab-panel");
+
+  settingsTabs.forEach(function(tab) {
+    tab.addEventListener("click", function() {
+      const targetTab = this.getAttribute("data-tab");
+      settingsTabs.forEach(function(t) {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      settingsPanels.forEach(function(p) { p.classList.remove("active"); });
+      this.classList.add("active");
+      this.setAttribute("aria-selected", "true");
+      const targetPanel = document.querySelector('.settings-tab-panel[data-panel="' + targetTab + '"]');
+      if (targetPanel) targetPanel.classList.add("active");
+    });
+  });
+
+  // Track unsaved changes
+  let settingsHasChanges = false;
+
+  function markSettingsChanged() {
+    settingsHasChanges = true;
+    updateSettingsStatus();
+  }
+
+  function updateSettingsStatus() {
+    const statusEl = document.getElementById("settings-status");
+    if (!statusEl) return;
+    if (settingsHasChanges) {
+      statusEl.textContent = "Unsaved changes";
+      statusEl.classList.add("visible");
+    } else {
+      statusEl.textContent = "";
+      statusEl.classList.remove("visible");
+    }
+  }
+
+  // Watch for changes in settings inputs
+  document.querySelectorAll('#settings-modal input, #settings-modal select').forEach(function(input) {
+    input.addEventListener("change", markSettingsChanged);
+    input.addEventListener("input", markSettingsChanged);
+  });
+
+  // Save Settings button
+  if (settingsSave) {
+    settingsSave.addEventListener("click", function() {
+      try {
+        // Save custom title
+        const newTitle = settingsTitleInput.value.trim() || DEFAULT_TITLE;
+        localStorage.setItem(CUSTOM_TITLE_KEY, newTitle);
+        renderTitle(newTitle);
+
+        // Save theme
+        const selectedTheme = document.querySelector('input[name="theme"]:checked');
+        if (selectedTheme) {
+          applyTheme(selectedTheme.value);
+        }
+
+        // Save font
+        const selectedFont = document.querySelector('input[name="font"]:checked');
+        if (selectedFont) {
+          applyFont(selectedFont.value);
+        }
+
+        // Save font size
+        const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
+        if (selectedFontSize) {
+          applyFontSize(selectedFontSize.value);
+        }
+
+        // Save animations preference
+        const animationsToggle = document.getElementById("animations-toggle");
+        if (animationsToggle) {
+          applyAnimations(animationsToggle.checked);
+        }
+
+        // Save sort preference
+        const sortPref = settingsSortSelect.value;
+        localStorage.setItem(SORT_PREFERENCE_KEY, sortPref);
+        updateSortButton();
+        renderCurrent();
+      } catch (e) {
+        console.error("Error saving settings:", e);
+      } finally {
+        settingsHasChanges = false;
+        updateSettingsStatus();
+        showSettingsToast("Settings saved");
+        settingsModal.classList.remove("active");
+        document.body.classList.remove("settings-open");
+      }
+    });
+  }
+
+  // Theme radio buttons - live preview
+  document.querySelectorAll('input[name="theme"]').forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (this.checked) {
+        applyTheme(this.value);
+      }
+    });
+  });
+
+  // Apply compact mode setting on startup so UI loads with the selected layout
+  applyCompactMode(loadCompactMode());
+
+  // Apply animations setting on startup
+  applyAnimations(loadAnimations());
+
+  // Font radio buttons - live preview
+  document.querySelectorAll('input[name="font"]').forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (this.checked) {
+        applyFont(this.value);
+        updateFontPreviewBadge(this.value);
+      }
+    });
+  });
+
+  function updateFontPreviewBadge(fontName) {
+    const badge = document.getElementById("font-preview-badge");
+    if (!badge) return;
+    const labels = {
+      "buka-bird": "Buka Bird",
+      "fredoka": "Fredoka",
+      "poppins": "Poppins",
+      "roboto": "Roboto",
+      "open-sans": "Open Sans",
+      "lato": "Lato",
+      "montserrat": "Montserrat",
+      "raleway": "Raleway",
+      "nunito": "Nunito",
+      "playfair": "Playfair"
+    };
+    badge.textContent = labels[fontName] || fontName;
+  }
+
+  // Font size radio buttons - live preview
+  document.querySelectorAll('input[name="fontSize"]').forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (this.checked) {
+        applyFontSize(this.value);
+      }
+    });
+  });
+
+  const compactModeToggle = document.getElementById("header-compact-mode-toggle");
+  if (compactModeToggle) {
+    compactModeToggle.checked = loadCompactMode();
+    compactModeToggle.addEventListener("change", function() {
+      applyCompactMode(this.checked);
+    });
+  }
+
+  const animationsToggle = document.getElementById("animations-toggle");
+  if (animationsToggle) {
+    animationsToggle.checked = loadAnimations();
+    animationsToggle.addEventListener("change", function() {
+      applyAnimations(this.checked);
+    });
+  }
+
+  const restoreDefaultsBtn = document.getElementById("settings-restore-defaults");
+  if (restoreDefaultsBtn) {
+    restoreDefaultsBtn.addEventListener("click", function() {
+      if (confirm("Restore all settings to defaults?")) {
+        restoreDefaultSettings();
+        if (settingsTitleInput) settingsTitleInput.value = "Hello, Stitch";
+        document.querySelectorAll('input[name="theme"]').forEach(function(radio) {
+          radio.checked = radio.value === "default";
+        });
+        document.querySelectorAll('input[name="font"]').forEach(function(radio) {
+          radio.checked = radio.value === "poppins";
+        });
+        updateFontPreviewBadge("poppins");
+        document.querySelectorAll('input[name="fontSize"]').forEach(function(radio) {
+          radio.checked = radio.value === "20";
+        });
+        const headerCompactToggle = document.getElementById("header-compact-mode-toggle");
+        if (headerCompactToggle) {
+          headerCompactToggle.checked = false;
+        }
+        applyCompactMode(false);
+        const animationsToggle = document.getElementById("animations-toggle");
+        if (animationsToggle) {
+          animationsToggle.checked = true;
+        }
+        applyAnimations(true);
+        showSettingsToast("Defaults restored");
+        markSettingsChanged();
+      }
+    });
+  }
+
+  function showSettingsToast(message) {
+    const toast = document.getElementById("settings-toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("visible");
+    setTimeout(function() {
+      toast.classList.remove("visible");
+    }, 2000);
+  }
+
+  function initCollapsibleSettingsSections() {
+    const sections = document.querySelectorAll(".settings-section");
+    const collapseAllBtn = document.getElementById("settings-collapse-all");
+    const COLLAPSED_STATE_KEY = "settings-collapsed-sections";
+
+    function loadCollapsedState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COLLAPSED_STATE_KEY) || "[]");
+        return saved;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveCollapsedState() {
+      const collapsed = [];
+      sections.forEach(function(section) {
+        if (section.classList.contains("collapsed")) {
+          collapsed.push(section.getAttribute("data-section-id") || "");
+        }
+      });
+      localStorage.setItem(COLLAPSED_STATE_KEY, JSON.stringify(collapsed));
+    }
+
+    const savedCollapsed = loadCollapsedState();
+    sections.forEach(function(section, index) {
+      const body = section.querySelector(".settings-section-body");
+      if (!body) return;
+      const sectionId = section.getAttribute("data-section-id") || ("section-" + index);
+      section.setAttribute("data-section-id", sectionId);
+      if (savedCollapsed.indexOf(sectionId) !== -1) {
+        section.classList.add("collapsed");
+      }
+    });
+
+    sections.forEach(function(section) {
+      const header = section.querySelector("h3");
+      const body = section.querySelector(".settings-section-body");
+      if (!header || !body) return;
+
+      header.addEventListener("click", function() {
+        section.classList.toggle("collapsed");
+        saveCollapsedState();
+      });
+    });
+
+    if (collapseAllBtn) {
+      collapseAllBtn.addEventListener("click", function() {
+        const allCollapsed = Array.from(sections).every(function(s) { return s.classList.contains("collapsed"); });
+        sections.forEach(function(section) {
+          const body = section.querySelector(".settings-section-body");
+          if (!body) return;
+          if (allCollapsed) {
+            section.classList.remove("collapsed");
+          } else {
+            section.classList.add("collapsed");
+          }
+        });
+        saveCollapsedState();
+        collapseAllBtn.setAttribute("data-tooltip", allCollapsed ? "Collapse all" : "Expand all");
+      });
+    }
+  }
+
+  initCollapsibleSettingsSections();
+
+  // Random button listeners
+  const randomThemeBtn = document.getElementById("random-theme-button");
+  if (randomThemeBtn) {
+    randomThemeBtn.addEventListener("click", randomizeTheme);
+  }
+
+  const randomFontBtn = document.getElementById("random-font-button");
+  if (randomFontBtn) {
+    randomFontBtn.addEventListener("click", randomizeFont);
+  }
+
+  const randomFontSizeBtn = document.getElementById("random-font-size-button");
+  if (randomFontSizeBtn) {
+    randomFontSizeBtn.addEventListener("click", randomizeFontSize);
+  }
+
+  // More dropdown
+  const moreBtn = document.getElementById("settings-more-btn");
+  const moreDropdown = document.querySelector(".settings-more-dropdown");
+  if (moreBtn && moreDropdown) {
+    moreBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      const isOpen = moreDropdown.classList.toggle("open");
+      moreBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+    document.addEventListener("click", function(e) {
+      if (!moreDropdown.contains(e.target)) {
+        moreDropdown.classList.remove("open");
+        moreBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  // Settings modal - Import button
+  if (settingsImportBtn) {
+    settingsImportBtn.addEventListener("click", function() {
+      settingsImportFile.click();
+    });
+  }
+
+  // Settings modal - Import file change
+  if (settingsImportFile) {
+    settingsImportFile.addEventListener("change", function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function() {
+        importFromJson(reader.result);
+        e.target.value = null;
+        settingsModal.classList.remove("active");
+        document.body.classList.remove("settings-open");
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  initEditBookmarkModal();
+
+  const addQuicklinkButton = document.getElementById("add-quicklink-button");
+  const quicklinkNameInput = document.getElementById("settings-quicklink-name");
+  const quicklinkUrlInput = document.getElementById("settings-quicklink-url");
+  const quicklinkCategoryInput = document.getElementById("settings-quicklink-category");
+  const quicklinkNewTabInput = document.getElementById("settings-quicklink-new-tab");
+  const quicklinkSearchInput = document.getElementById("settings-quicklink-search");
+  const quicklinkError = document.getElementById("quicklink-error");
+
+  function setQuicklinkError(message) {
+    if (quicklinkError) quicklinkError.textContent = message || "";
+  }
+
+  function isValidUrl(value) {
+    try {
+      const normalized = value.match(/^https?:\/\//i) ? value.trim() : "https://" + value.trim();
+      const parsed = new URL(normalized);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if (quicklinkNameInput) {
+    quicklinkNameInput.addEventListener("input", function() {
+      setQuicklinkError("");
+    });
+  }
+  if (quicklinkUrlInput) {
+    quicklinkUrlInput.addEventListener("input", function() {
+      setQuicklinkError("");
+    });
+  }
+
+  if (addQuicklinkButton) {
+    addQuicklinkButton.addEventListener("click", function() {
+      const label = quicklinkNameInput ? quicklinkNameInput.value.trim() : "";
+      const url = quicklinkUrlInput ? quicklinkUrlInput.value.trim() : "";
+      const category = quicklinkCategoryInput ? quicklinkCategoryInput.value.trim() : "General";
+      const openInNewTab = quicklinkNewTabInput ? quicklinkNewTabInput.checked : true;
+      if (!label) {
+        setQuicklinkError("Please enter a button name.");
+        return;
+      }
+      if (!url) {
+        setQuicklinkError("Please enter a URL.");
+        return;
+      }
+      if (!isValidUrl(url)) {
+        setQuicklinkError("Please enter a valid URL starting with http:// or https://");
+        return;
+      }
+
+      const linkUrl = url.match(/^https?:\/\//i) ? url.trim() : "https://" + url.trim();
+      const links = loadCustomQuickLinks();
+      links.push({ label: label, url: linkUrl, category: category || "General", openInNewTab: openInNewTab });
+      saveCustomQuickLinks(links);
+      renderCustomQuickLinks();
+      renderCustomQuickLinksList();
+      setQuicklinkError("");
+
+      if (quicklinkNameInput) quicklinkNameInput.value = "";
+      if (quicklinkUrlInput) quicklinkUrlInput.value = "";
+    });
+  }
+
+  // Features Modal Functionality
+  const featuresModal = document.getElementById("features-modal");
+  const featuresInfoButton = document.getElementById("settings-info-button");
+  const featuresCloseButton = document.getElementById("features-close");
+
+  // Open features modal
+  if (featuresInfoButton && featuresModal) {
+    featuresInfoButton.addEventListener("click", function() {
+      openModal(featuresModal);
+    });
+  }
+
+  // Close features modal
+  if (featuresCloseButton && featuresModal) {
+    featuresCloseButton.addEventListener("click", function() {
+      closeModal(featuresModal);
+    });
+  }
+
+  // Close features modal when clicking outside
+  if (featuresModal) {
+    featuresModal.addEventListener("click", function(e) {
+      if (e.target === featuresModal) {
+        closeModal(featuresModal);
+      }
+    });
+  }
+
+  // Font dropdown functionality - now uses global function
+
+  // Load saved font
+  const savedFont = getSelectedFont();
+  applyFont(savedFont);
+
+  function renderTitle(titleText) {
+    if (!welcomeElement) return;
+
+    // Get current date and time for the formatted title
+    const now = new Date();
+    const dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+    const monthName = now.toLocaleDateString("en-US", { month: "long" });
+    const day = now.getDate();
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+
+    // Create formatted title with date and time, wrapping date and time in underlined spans
+    const formattedTitle = titleText + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+
+    // Render the formatted title to the welcome element, preserving underline spans
+    welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
+
+    // Also update the browser tab title with full format (without HTML)
+    document.title = titleText + " today is " + dayName + " " + monthName + " " + day + ", " + year + " and the time is " + hour12 + ":" + minutes + " " + ampm;
+  }
+
+  function loadCustomTitle() {
+    return getCustomTitle();
+  }
+
+  // Title will be rendered after bookmarks load (in chrome.bookmarks.getTree callback)
+  // This ensures title appears together with bookmarks, not before
+
+  if (welcomeElement) {
+    welcomeElement.addEventListener("click", function() {
+      if (welcomeElement.querySelector(".title-edit-input")) return;
+
+      const currentTitle = loadCustomTitle();
+      welcomeElement.classList.add("editing");
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "title-edit-input";
+      input.value = currentTitle;
+
+      welcomeElement.innerHTML = "";
+      welcomeElement.appendChild(input);
+      input.focus();
+      input.select();
+
+      function saveTitle() {
+        const newTitle = input.value.trim() || DEFAULT_TITLE;
+
+        localStorage.setItem(CUSTOM_TITLE_KEY, newTitle);
+        welcomeElement.classList.remove("editing");
+        renderTitle(newTitle);
+      }
+
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") saveTitle();
+        else if (e.key === "Escape") {
+          welcomeElement.classList.remove("editing");
+          renderTitle(currentTitle);
+        }
+      });
+
+      input.addEventListener("blur", saveTitle);
+    });
+  }
+
+  // Theme functionality
+  const savedTheme = getSelectedTheme();
+  applyTheme(savedTheme);
+
+  updateTimestamp();
+
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", debouncedFilterBookmarks);
+    searchInput.value = "";
+
+    const searchClear = document.getElementById("search-clear");
+    if (searchClear) {
+      searchClear.addEventListener("click", function() {
+        searchInput.value = "";
+        filterBookmarks();
+        searchClear.hidden = true;
+        searchInput.focus();
+      });
+
+      searchInput.addEventListener("input", function() {
+        searchClear.hidden = !searchInput.value.trim();
+      });
+    }
+  }
+
+  const folderFilterInput = document.getElementById("folder-filter-input");
+  if (folderFilterInput) {
+    folderFilterInput.addEventListener("input", function() {
+      if (window.rootFolders) {
+        generateFilterButtons(window.rootFolders, this.value);
+      }
+    });
+  }
+
+  const tagFilterInput = document.getElementById("tag-filter-input");
+  if (tagFilterInput) {
+    tagFilterInput.addEventListener("input", function() {
+      const tag = this.value.trim();
+      if (tag) {
+        filterByTagPartial(tag);
+      } else {
+        resetFilters();
+      }
+    });
+  }
+
+  const clearPinsBtn = document.getElementById("clear-pins");
+  if (clearPinsBtn) {
+    clearPinsBtn.addEventListener("click", function() {
+      clearAllPins();
+    });
+  }
+
+  setupMultiSelectListeners();
+
+  const openBtn = document.getElementById("multi-open-button");
+  const closeBtn = document.getElementById("multi-close-button");
+  if (openBtn) {
+    openBtn.addEventListener("click", function() {
+      const urls = Array.from(window.selectedBookmarks);
+      if (urls.length) openTabsSafely(urls);
+    });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener("click", clearMultiSelect);
+  }
+
+  const quickLinks = [
+    { id: "chatgpt-button", url: "https://chat.openai.com/" },
+    { id: "grok-button", url: "https://grok.com/" },
+    { id: "amazon-button", url: "https://www.amazon.com/", searchTemplate: "https://www.amazon.com/s?k={query}" },
+    { id: "gemini-button", url: "https://gemini.google.com/" },
+    { id: "reddit-button", url: "https://www.reddit.com/", searchTemplate: "https://www.reddit.com/search?q={query}" },
+    { id: "twitch-button", url: "https://www.twitch.tv/", searchTemplate: "https://www.twitch.tv/search?term={query}" },
+    { id: "youtube-button", url: "https://www.youtube.com/", searchTemplate: "https://www.youtube.com/results?search_query={query}" },
+  ];
+
+  quickLinks.forEach(function(link) {
+    const btn = document.getElementById(link.id);
+    if (btn) {
+      const iconSpan = btn.querySelector('.btn-icon');
+      if (iconSpan && typeof getFaviconUrl === 'function') {
+        const faviconUrl = getFaviconUrl(link.url);
+        const img = document.createElement('img');
+        img.className = 'btn-favicon';
+        img.src = faviconUrl;
+        img.alt = '';
+        img.onerror = function() {
+          img.remove();
+          iconSpan.style.display = '';
+        };
+        img.onload = function() {
+          iconSpan.style.display = 'none';
+        };
+        btn.insertBefore(img, iconSpan);
+      }
+
+      btn.addEventListener("click", function() {
+        const searchInput = document.getElementById("search-input");
+        const query = searchInput ? searchInput.value.trim() : "";
+        const url = query && link.searchTemplate
+          ? link.searchTemplate.replace("{query}", encodeURIComponent(query))
+          : link.url;
+        window.open(url, "_blank", "noopener");
+      });
+    }
+  });
+
+  // Render custom quick links from settings
+  renderCustomQuickLinks();
+  renderCustomQuickLinksList();
+  updateCategoryDatalist();
+
+  if (quicklinkSearchInput) {
+    quicklinkSearchInput.addEventListener("input", function() {
+      renderCustomQuickLinksList();
+    });
+  }
+
+  const youtubeButton = document.getElementById("youtube-button");
+  if (youtubeButton) {
+    youtubeButton.addEventListener("click", function() {
+      const query = document.getElementById("search-input").value.trim();
+      if (query) {
+        window.location.href = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+      } else {
+        window.location.href = "https://www.youtube.com";
+      }
+    });
+  }
+
+  let currentSearchMode = "web";
+
+  function performGoogleSearch(query) {
+    const trimmedQuery = (query || "").trim();
+    const encoded = encodeURIComponent(trimmedQuery);
+    let url;
+    if (currentSearchMode === "images") {
+      url = trimmedQuery
+        ? "https://www.google.com/search?tbm=isch&q=" + encoded
+        : "https://www.google.com/imghp";
+    } else if (currentSearchMode === "maps") {
+      url = trimmedQuery
+        ? "https://www.google.com/maps/search/?api=1&query=" + encoded
+        : "https://www.google.com/maps";
+    } else {
+      url = trimmedQuery
+        ? "https://www.google.com/search?q=" + encoded
+        : "https://www.google.com/";
+    }
+    window.open(url, "_blank", "noopener");
+  }
+
+  const modeButtons = document.querySelectorAll(".google-search-mode");
+  modeButtons.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      modeButtons.forEach(function(b) {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      this.classList.add("active");
+      this.setAttribute("aria-selected", "true");
+      currentSearchMode = this.getAttribute("data-mode") || "web";
+    });
+  });
+
+  const googleButton = document.getElementById("google-search-submit");
+  const googleSearchInput = document.getElementById("google-search-input");
+  const googleSearchClear = document.getElementById("google-search-clear");
+  if (googleButton) {
+    googleButton.addEventListener("click", function() {
+      performGoogleSearch(googleSearchInput ? googleSearchInput.value : "");
+    });
+  }
+  if (googleSearchClear && googleSearchInput) {
+    googleSearchClear.addEventListener("click", function() {
+      googleSearchInput.value = "";
+      googleSearchClear.hidden = true;
+      googleSearchInput.focus();
+    });
+    googleSearchInput.addEventListener("input", function() {
+      googleSearchClear.hidden = !googleSearchInput.value.trim();
+    });
+  }
+  if (googleSearchInput) {
+    googleSearchInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        performGoogleSearch(googleSearchInput.value);
+      }
+    });
+  }
+
+  const goToTopBtn = document.getElementById("go-to-top");
+  const container = document.getElementById("container");
+
+  function loadCustomQuickLinks() {
+  try {
+    return JSON.parse(localStorage.getItem("customQuickLinks") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+

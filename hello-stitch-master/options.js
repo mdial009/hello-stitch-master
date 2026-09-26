@@ -1,7 +1,7 @@
 // Extension options
 const options = {
   TITLE: "Hello, Stitch",
-  ROOT_FOLDER: /(bookmarks (tool)?bar|favou?rites bar)/i,
+  ROOT_FOLDER: /(bookmarks(\s*tool)?\s*bar|favou?rites bar)/i,
     TITLE_COLOR: "#FF0000", // Red
 
   SEPARATORS: ["separator", "---","-", ""],

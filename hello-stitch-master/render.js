@@ -59,31 +59,56 @@ function render(columns) {
   flattenedColumns.forEach(function(col) {
     const columnDiv = document.createElement("div");
     columnDiv.className = "dynamic-column";
+    columnDiv.setAttribute("data-column-title", col.title);
 
     const summary = document.createElement("div");
     summary.className = "column-summary";
     const displayTitle = col.displayTitle || col.title;
     summary.setAttribute("data-tooltip", "Path: " + col.title);
-    summary.textContent = displayTitle;
     
-    summary.style.cursor = "pointer";
-    summary.addEventListener("click", function() {
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = displayTitle;
+    
+    const folderIcon = document.createElement("span");
+    folderIcon.className = "folder-icon";
+    const iconInfo = getFolderIcon(col.title);
+    folderIcon.textContent = iconInfo.icon;
+    folderIcon.style.color = iconInfo.color;
+    summary.appendChild(titleSpan);
+    summary.insertBefore(folderIcon, titleSpan);
+    
+    const collapseBtn = document.createElement("button");
+    collapseBtn.className = "collapse-toggle";
+    collapseBtn.setAttribute("data-tooltip", "Collapse/Expand");
+    collapseBtn.innerHTML = "▼";
+    collapseBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      columnDiv.classList.toggle("collapsed");
       this.classList.toggle("collapsed");
-      const ul = this.nextElementSibling;
-      if (ul && ul.tagName === "UL") {
-        ul.style.display = ul.style.display === "none" ? "" : "none";
+      const ul = columnDiv.querySelector("ul");
+      if (ul) {
+        ul.style.display = columnDiv.classList.contains("collapsed") ? "none" : "";
       }
+      saveColumnState();
+    });
+    summary.appendChild(collapseBtn);
+    
+    summary.addEventListener("click", function(e) {
+      if (e.target === collapseBtn) return;
+      collapseBtn.click();
     });
     
     columnDiv.appendChild(summary);
 
     const ul = document.createElement("ul");
+    ul.className = "bookmark-list";
     
     if (col.children && col.children.length > 0) {
       col.children.forEach(function(bm) {
-        const li = document.createElement("li");
-        li.className = "bookmark-item";
-        if (bm.isDuplicate) li.classList.add("duplicate");
+      const li = document.createElement("li");
+      li.className = "bookmark-item";
+      if (bm.isDuplicate) li.classList.add("duplicate");
+      if (typeof isBrokenLink === "function" && isBrokenLink(bm.url)) li.classList.add("broken");
 
         // Create favicon image
         const favicon = document.createElement("img");
@@ -99,6 +124,62 @@ function render(columns) {
         link.className = "bookmark-link";
         link.setAttribute("data-url", bm.url);
         link.textContent = bm.title;
+        if (typeof isBrokenLink === "function" && isBrokenLink(bm.url)) {
+          const indicator = document.createElement("span");
+          indicator.className = "broken-indicator";
+          indicator.setAttribute("data-tooltip", "Link may be broken or inaccessible");
+          link.insertBefore(indicator, link.firstChild);
+        }
+        
+        // Age badge
+        if (bm.dateAdded) {
+          const age = getBookmarkAge(bm.dateAdded);
+          if (age) {
+            const badge = document.createElement("span");
+            badge.className = "bookmark-age-badge " + age.className;
+            badge.textContent = age.label;
+            badge.title = "Added " + age.title;
+            link.appendChild(badge);
+          }
+        }
+        link.draggable = true;
+        link.setAttribute("data-source", "render");
+        
+        // Drag event handlers for bookmark items
+        link.addEventListener("dragstart", function(e) {
+          e.stopPropagation();
+          const url = this.getAttribute("data-url");
+          const bm = this.closest("li.bookmark-item");
+          if (url && bm) {
+            // Store the bookmark URL and element for drag operations
+            e.dataTransfer.setData("text/plain", url);
+            e.dataTransfer.effectAllowed = "move";
+            // Add dragging class for visual feedback
+            this.classList.add("dragging");
+            bm.classList.add("dragging");
+            // Show drag preview
+            const dragPreview = document.createElement("div");
+            dragPreview.className = "drag-preview";
+            dragPreview.textContent = this.textContent;
+            document.body.appendChild(dragPreview);
+            window.dragPreview = dragPreview;
+          }
+        });
+        
+        link.addEventListener("dragend", function(e) {
+          e.stopPropagation();
+          this.classList.remove("dragging");
+          const bm = this.closest("li.bookmark-item");
+          if (bm) bm.classList.remove("dragging");
+          if (window.dragPreview) {
+            window.dragPreview.remove();
+            window.dragPreview = null;
+          }
+          // Remove any visual indicators
+          document.querySelectorAll(".drag-over").forEach(el => {
+            el.classList.remove("drag-over");
+          });
+        });
         
         link.insertBefore(favicon, link.firstChild);
         
@@ -194,6 +275,22 @@ function render(columns) {
         deleteBtn.textContent = "✕";
         actionsDiv.appendChild(deleteBtn);
 
+        // Notes button
+        const notesBtn = document.createElement("button");
+        notesBtn.className = "notes-btn";
+        notesBtn.setAttribute("data-url", bm.url);
+        notesBtn.setAttribute("data-tooltip", "Add note");
+        notesBtn.textContent = "📝";
+        notesBtn.addEventListener("click", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const url = this.getAttribute("data-url");
+          if (url && typeof openNotesModal === "function") {
+            openNotesModal(url);
+          }
+        });
+        actionsDiv.appendChild(notesBtn);
+
         // Checkbox for multi-select - handled by both render.js and script.js for reliability
         const checkboxWrapper = document.createElement("div");
         checkboxWrapper.className = "bookmark-select-wrapper";
@@ -228,11 +325,52 @@ function render(columns) {
         actionsDiv.insertBefore(checkboxWrapper, actionsDiv.firstChild);
 
         li.appendChild(actionsDiv);
+
+        // Note hover preview
+        const bmNotes = window.bookmarkNotes && window.bookmarkNotes[bm.url];
+        if (bmNotes && bmNotes.trim()) {
+          const notePreview = document.createElement("div");
+          notePreview.className = "bookmark-note-preview";
+          notePreview.textContent = bmNotes;
+          li.appendChild(notePreview);
+        }
+
+        li.addEventListener("contextmenu", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const url = this.querySelector(".bookmark-link") && this.querySelector(".bookmark-link").getAttribute("data-url");
+          if (!url) return;
+          const menu = document.getElementById("context-menu");
+          if (!menu) return;
+          menu._currentUrl = url;
+          const x = Math.min(e.clientX, window.innerWidth - 240);
+          const y = Math.min(e.clientY, window.innerHeight - 280);
+          menu.style.left = x + "px";
+          menu.style.top = y + "px";
+          menu.classList.add("visible");
+        });
+
         ul.appendChild(li);
       });
     }
 
     columnDiv.appendChild(ul);
+    
+    // Restore collapsed state from localStorage
+    if (typeof loadColumnState === "function") {
+      const state = loadColumnState();
+      const saved = state.find(function(s) { return s.title === col.title; });
+      if (saved && saved.collapsed) {
+        columnDiv.classList.add("collapsed");
+        collapseBtn.classList.add("collapsed");
+        ul.style.display = "none";
+      }
+    }
+    
+    const resizeHandle = document.createElement("div");
+    resizeHandle.className = "column-resize-handle";
+    columnDiv.appendChild(resizeHandle);
+    
     container.appendChild(columnDiv);
   });
 
@@ -256,6 +394,293 @@ function updateContainerClass() {
   }
 }
 
-// Expose Render globally
-window.render = render;
+function performBookmarkMove(columns, draggedBookmark, targetItem) {
+  const result = { columns: columns, moved: false };
+  
+  // Find the source column and index
+  let srcColIndex = -1, srcCol = null, srcIdx = -1;
+  columns.forEach((col, colIndex) => {
+    col.children.forEach((bm, idx) => {
+      if (bm.url === draggedBookmark.url) {
+        srcColIndex = colIndex;
+        srcCol = col;
+        srcIdx = idx;
+      }
+    });
+  });
+  
+  if (!srcCol || srcIdx === -1) return result;
+  
+  // Find the target column and index
+  let dstColIndex = -1, dstCol = null, dstIdx = -1;
+  columns.forEach((col, colIndex) => {
+    col.children.forEach((bm, idx) => {
+      if (bm.url === targetItem.getAttribute("data-url")) {
+        dstColIndex = colIndex;
+        dstCol = col;
+        dstIdx = idx;
+      }
+    });
+  });
+  
+  if (!dstCol || dstIdx === -1) return result;
+  
+  // Perform the move
+  const [movedBookmark] = srcCol.children.splice(srcIdx, 1);
+  if (srcCol === dstCol && srcIdx < dstIdx) dstIdx--; // Adjust if dropping before moved item
+  dstCol.children.splice(dstIdx, 0, movedBookmark);
+  
+  result.moved = true;
+  return result;
+}
+
+function performColumnMove(columns, draggedUrl, targetColumn) {
+  const result = { columns: columns, moved: false };
+  
+  // Find the source bookmark (the one being dragged)
+  let srcColIndex = -1, srcCol = null, srcIdx = -1;
+  columns.forEach((col, colIndex) => {
+    col.children.forEach((bm, idx) => {
+      if (bm.url === draggedUrl) {
+        srcColIndex = colIndex;
+        srcCol = col;
+        srcIdx = idx;
+      }
+    });
+  });
+  
+  if (!srcCol || srcIdx === -1) return result;
+  
+  // Find the target column
+  let dstColIndex = -1, dstCol = null;
+  columns.forEach((col, colIndex) => {
+    if (col.title === targetColumn.getAttribute("data-column-title")) {
+      dstColIndex = colIndex;
+      dstCol = col;
+    }
+  });
+  
+  if (!dstCol) return result;
+  
+  // Perform the move
+  const [movedBookmark] = srcCol.children.splice(srcIdx, 1);
+  dstCol.children.push(movedBookmark);
+  
+  result.moved = true;
+  return result;
+}
+
+function setupDragAndDrop() {
+  const container = document.getElementById("container");
+  if (!container) return;
+  
+  // Set up dragover and drop event handlers for the container
+  container.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    const target = e.target.closest("li.bookmark-item, .dynamic-column");
+    if (target) {
+      // Highlight potential drop targets
+      target.classList.add("drag-over");
+    }
+  });
+  
+  container.addEventListener("dragleave", function(e) {
+    const target = e.target.closest("li.bookmark-item, .dynamic-column");
+    if (target) {
+      target.classList.remove("drag-over");
+    }
+  });
+  
+  container.addEventListener("drop", function(e) {
+    e.preventDefault();
+    const target = e.target.closest("li.bookmark-item, .dynamic-column");
+    if (!target) return;
+    
+    const draggedUrl = e.dataTransfer.getData("text/plain");
+    if (!draggedUrl) return;
+    
+    // Remove visual highlights
+    document.querySelectorAll(".drag-over").forEach(el => {
+      el.classList.remove("drag-over");
+    });
+    
+    // Check if we dropped on a bookmark item or a column
+    if (target.classList.contains("bookmark-item")) {
+      // Handle bookmark-to-bookmark or bookmark-to-column drop
+      const draggedUrl = target.getAttribute("data-url");
+      if (!draggedUrl) return;
+      
+      // Find the dragged bookmark object
+      let draggedBookmark = null;
+      columns.forEach(col => {
+        col.children.forEach(bm => {
+          if (bm.url === draggedUrl) {
+            draggedBookmark = bm;
+          }
+        });
+      });
+      
+      if (!draggedBookmark) return;
+      
+      const containerColumns = columns || window.columns;
+      const result = performBookmarkMove(containerColumns, draggedBookmark, target);
+      if (result.moved) {
+        render(result.columns);
+      }
+    } else if (target.classList.contains("dynamic-column")) {
+      // Handle bookmark-to-column drop (dragging a bookmark onto a column)
+      const draggedUrl = e.dataTransfer.getData("text/plain");
+      if (!draggedUrl) return;
+      
+      const containerColumns = columns || window.columns;
+      const result = performColumnMove(containerColumns, draggedUrl, target);
+      if (result.moved) {
+        render(result.columns);
+      }
+    }
+  });
+}
+
+function updateHeaderDropdown() {
+  const dropdown = document.getElementById("bookmark-filter-dropdown");
+  if (!dropdown) return;
+  
+  // Refresh the dropdown with updated columns
+  dropdown.innerHTML = "";
+  
+  const containerColumns = columns || window.columns;
+  if (!containerColumns || containerColumns.length === 0) return;
+  
+  // Create dropdown for each column
+  containerColumns.forEach(col => {
+    if (col.title === "/") return; // Skip root column
+    
+    const btn = document.createElement("button");
+    btn.className = "filter-button";
+    btn.textContent = col.title;
+    btn.setAttribute("data-column-title", col.title);
+    btn.title = "Filter by " + col.title;
+    
+    btn.addEventListener("click", function() {
+      filterByCategory(col.title.toLowerCase());
+      updateCloseAllVisibility();
+    });
+    
+    dropdown.appendChild(btn);
+  });
+}
+
+// Initialize drag-and-drop functionality
+document.addEventListener("DOMContentLoaded", function() {
+  // Set up drag-and-drop for bookmark items
+  document.querySelectorAll(".bookmark-link").forEach(function(link) {
+    link.draggable = true;
+    link.addEventListener("dragstart", function(e) {
+      e.stopPropagation();
+      const url = this.getAttribute("data-url");
+      if (url) {
+        e.dataTransfer.setData("text/plain", url);
+        e.dataTransfer.effectAllowed = "move";
+        this.classList.add("dragging");
+        this.closest(".bookmark-item").classList.add("dragging");
+      }
+    });
+    
+    link.addEventListener("dragend", function(e) {
+      e.stopPropagation();
+      this.classList.remove("dragging");
+      this.closest(".bookmark-item").classList.remove("dragging");
+      
+      // Remove any visual indicators
+      document.querySelectorAll(".drag-over").forEach(el => {
+        el.classList.remove("drag-over");
+      });
+    });
+  });
+  
+  // Set up drag-and-drop for the container
+  const container = document.getElementById("container");
+  if (container) {
+    container.addEventListener("dragover", function(e) {
+      e.preventDefault();
+      const target = e.target.closest("li.bookmark-item, .dynamic-column");
+      if (target) {
+        target.classList.add("drag-over");
+      }
+    });
+    
+    container.addEventListener("dragleave", function(e) {
+      const target = e.target.closest("li.bookmark-item, .dynamic-column");
+      if (target) {
+        target.classList.remove("drag-over");
+      }
+    });
+    
+    container.addEventListener("drop", function(e) {
+      e.preventDefault();
+      const target = e.target.closest("li.bookmark-item, .dynamic-column");
+      if (!target) return;
+      
+      const draggedUrl = e.dataTransfer.getData("text/plain");
+      if (!draggedUrl) return;
+      
+      // Remove visual highlights
+      document.querySelectorAll(".drag-over").forEach(el => {
+        el.classList.remove("drag-over");
+      });
+      
+      // Perform the drop operation
+      const containerColumns = columns || window.columns || [];
+      if (target.classList.contains("bookmark-item")) {
+        // Find the dragged bookmark
+        let draggedBookmark = null;
+        containerColumns.forEach(col => {
+          col.children.forEach(bm => {
+            if (bm.url === draggedUrl) {
+              draggedBookmark = bm;
+            }
+          });
+        });
+        
+        if (draggedBookmark) {
+          const result = performBookmarkMove(containerColumns, draggedBookmark, target);
+          if (result.moved) {
+            render(result.columns);
+          }
+        }
+      } else if (target.classList.contains("dynamic-column")) {
+        const result = performColumnMove(containerColumns, draggedUrl, target);
+        if (result.moved) {
+          render(result.columns);
+        }
+      }
+    });
+  }
+  
+  // Set up drag-and-drop for filter buttons
+  const filterButtons = document.querySelectorAll(".filter-button");
+  filterButtons.forEach(function(btn) {
+    btn.draggable = true;
+    btn.addEventListener("dragstart", function(e) {
+      e.stopPropagation();
+      const columnTitle = this.getAttribute("data-column-title");
+      if (columnTitle) {
+        e.dataTransfer.setData("text/plain", columnTitle);
+        e.dataTransfer.effectAllowed = "move";
+        this.classList.add("dragging");
+      }
+    });
+    
+    btn.addEventListener("dragend", function(e) {
+      e.stopPropagation();
+      this.classList.remove("dragging");
+    });
+  });
+});
+
+// Expose drag-and-drop functions globally
+window.performBookmarkMove = performBookmarkMove;
+window.performColumnMove = performColumnMove;
+window.setupDragAndDrop = setupDragAndDrop;
+window.updateHeaderDropdown = updateHeaderDropdown;
 

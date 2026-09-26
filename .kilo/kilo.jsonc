@@ -1,0 +1,6 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "kilo-code.maxTokens": 3000,
+"kilo-code.temperature": 0.7,
+"kilo-code.stream": true
+}

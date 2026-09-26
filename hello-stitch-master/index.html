@@ -24,7 +24,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/web/icons8-stitch-color-32.png" />
   <link rel="icon" type="image/png" sizes="48x48" href="icons/web/icons8-stitch-color-48.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/web/icons8-stitch-color-192.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/web/icons8-stitch-color-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/web/icons8-stitch-color-180.png" />
+  <link id="google-fonts-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" />
+  <script src="title-init.js" defer></script>
   <script src="options.js" defer></script>
   <script src="utils.js" defer></script>
   <script src="script.js" defer></script>
@@ -43,10 +45,17 @@
   
   <div id="header">
     <h1 id="welcome"></h1>
-    <!-- <div id="timestamp">
-      <span id="date"></span> - <span id="hours"></span>:<span id="minutes"></span>:<span id="seconds"></span> <span id="ampm"></span>
-    </div>
-    <div id="day"></div> -->
+    <select id="theme-select" class="theme-select" data-tooltip="Select theme">
+      <option value="default">Default Theme</option>
+    </select>
+    <select id="font-select" class="font-select" data-tooltip="Select font">
+      <option value="poppins">Poppins</option>
+    </select>
+    <select id="sort-select" class="font-select" data-tooltip="Sort bookmarks">
+      <option value="frequency">Most Visited</option>
+      <option value="date">Date Added</option>
+      <option value="alphabetical">A-Z</option>
+    </select>
   </div> 
   
   <div id="search-container">
@@ -89,9 +98,24 @@
       <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
       <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
     </div>
-    <div class="filter-buttons"></div>
+    <div class="filter-buttons">
+      <button id="close-all-btn" class="small-button" data-tooltip="Close all">Close All</button>
+      <button id="clear-pins" class="small-button" data-tooltip="Clear pinned">Clear Pins</button>
+      <button id="filter-work-mode" class="small-button" data-tooltip="Filter work mode">Work Mode</button>
+      <button id="sort-frequency" class="small-button" data-tooltip="Sort by most visited">Most Visited</button>
+      <button id="sort-date" class="small-button" data-tooltip="Sort by date added">Date Added</button>
+      <button id="sort-alphabetical" class="small-button" data-tooltip="Sort A-Z">A-Z</button>
+    </div>
     <div class="import-export-buttons">
+      <button id="collapse-all-button" class="small-button" data-tooltip="Collapse all folders">📁 Collapse All</button>
+      <button id="expand-all-button" class="small-button" data-tooltip="Expand all folders">📂 Expand All</button>
+      <button id="reset-layout-button" class="small-button" data-tooltip="Reset column layout">🔄 Reset Layout</button>
+      <button id="compact-mode-button" class="small-button" data-tooltip="Toggle compact mode">📦 Compact</button>
+      <button id="analytics-button" class="small-button" data-tooltip="View bookmark analytics">📊 Analytics</button>
       <button id="settings-button" class="small-button" data-tooltip="Open settings">⚙️ Settings</button>
+      <button id="export-button" class="small-button" data-tooltip="Export Bookmarks">📤 Export</button>
+      <button id="import-button" class="small-button" data-tooltip="Import Bookmarks">📥 Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
   </div>
   
@@ -133,6 +157,7 @@
           </label>
         </div>
         <div class="workdays-config">
+          <label><input type="checkbox" id="workmode-select-all" /> All</label>
           <label><input type="checkbox" id="workmode-mon" checked /> Mon</label>
           <label><input type="checkbox" id="workmode-tue" checked /> Tue</label>
           <label><input type="checkbox" id="workmode-wed" checked /> Wed</label>
@@ -187,15 +212,18 @@
         
         <!-- Custom Title Section -->
         <div class="settings-section">
-          <h3>📝 Custom Title</h3>
-          <input type="text" id="settings-title-input" class="settings-input" placeholder="Enter custom title..." />
-          <p class="settings-hint">Click on the title in the header to edit it directly.</p>
+          <h3 class="settings-section-header">📝 Custom Title <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <input type="text" id="settings-title-input" class="settings-input" placeholder="Enter custom title..." />
+            <p class="settings-hint">Click on the title in the header to edit it directly.</p>
+          </div>
         </div>
         
         <!-- Theme Selection -->
         <div class="settings-section">
-          <h3>🎨 Theme</h3>
-          <div class="settings-grid">
+          <h3 class="settings-section-header">🎨 Theme <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
             <label class="settings-option">
               <input type="radio" name="theme" value="default" />
               <div class="theme-preview theme-preview-default"></div>
@@ -271,14 +299,221 @@
               <div class="theme-preview theme-preview-cyberpunk"></div>
               <span>Cyberpunk</span>
             </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="amber" />
+              <div class="theme-preview theme-preview-amber"></div>
+              <span>Amber</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="teal" />
+              <div class="theme-preview theme-preview-teal"></div>
+              <span>Teal</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="indigo" />
+              <div class="theme-preview theme-preview-indigo"></div>
+              <span>Indigo</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="emerald" />
+              <div class="theme-preview theme-preview-emerald"></div>
+              <span>Emerald</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="ruby" />
+              <div class="theme-preview theme-preview-ruby"></div>
+              <span>Ruby</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="sapphire" />
+              <div class="theme-preview theme-preview-sapphire"></div>
+              <span>Sapphire</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="amethyst" />
+              <div class="theme-preview theme-preview-amethyst"></div>
+              <span>Amethyst</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="copper" />
+              <div class="theme-preview theme-preview-copper"></div>
+              <span>Copper</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="jade" />
+              <div class="theme-preview theme-preview-jade"></div>
+              <span>Jade</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="crimson" />
+              <div class="theme-preview theme-preview-crimson"></div>
+              <span>Crimson</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="slate" />
+              <div class="theme-preview theme-preview-slate"></div>
+              <span>Slate</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="mint" />
+              <div class="theme-preview theme-preview-mint"></div>
+              <span>Mint</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="tangerine" />
+              <div class="theme-preview theme-preview-tangerine"></div>
+              <span>Tangerine</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="violet" />
+              <div class="theme-preview theme-preview-violet"></div>
+              <span>Violet</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="sky" />
+              <div class="theme-preview theme-preview-sky"></div>
+              <span>Sky</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="persimmon" />
+              <div class="theme-preview theme-preview-persimmon"></div>
+              <span>Persimmon</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="graphite" />
+              <div class="theme-preview theme-preview-graphite"></div>
+              <span>Graphite</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="neon-green" />
+              <div class="theme-preview theme-preview-neon-green"></div>
+              <span>Neon Green</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="hot-pink" />
+              <div class="theme-preview theme-preview-hot-pink"></div>
+              <span>Hot Pink</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="arctic" />
+              <div class="theme-preview theme-preview-arctic"></div>
+              <span>Arctic</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="sunflower" />
+              <div class="theme-preview theme-preview-sunflower"></div>
+              <span>Sunflower</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="magenta" />
+              <div class="theme-preview theme-preview-magenta"></div>
+              <span>Magenta</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="steel" />
+              <div class="theme-preview theme-preview-steel"></div>
+              <span>Steel</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="peach" />
+              <div class="theme-preview theme-preview-peach"></div>
+              <span>Peach</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="electric" />
+              <div class="theme-preview theme-preview-electric"></div>
+              <span>Electric</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="moss" />
+              <div class="theme-preview theme-preview-moss"></div>
+              <span>Moss</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="plum" />
+              <div class="theme-preview theme-preview-plum"></div>
+              <span>Plum</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="rust" />
+              <div class="theme-preview theme-preview-rust"></div>
+              <span>Rust</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="cloud" />
+              <div class="theme-preview theme-preview-cloud"></div>
+              <span>Cloud</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="neon-blue" />
+              <div class="theme-preview theme-preview-neon-blue"></div>
+              <span>Neon Blue</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="butter" />
+              <div class="theme-preview theme-preview-butter"></div>
+              <span>Butter</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="scarlet" />
+              <div class="theme-preview theme-preview-scarlet"></div>
+              <span>Scarlet</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="honey" />
+              <div class="theme-preview theme-preview-honey"></div>
+              <span>Honey</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="phantom" />
+              <div class="theme-preview theme-preview-phantom"></div>
+              <span>Phantom</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="barbie" />
+              <div class="theme-preview theme-preview-barbie"></div>
+              <span>Barbie</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="blizzard" />
+              <div class="theme-preview theme-preview-blizzard"></div>
+              <span>Blizzard</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="toxic" />
+              <div class="theme-preview theme-preview-toxic"></div>
+              <span>Toxic</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="frost" />
+              <div class="theme-preview theme-preview-frost"></div>
+              <span>Frost</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="garnet" />
+              <div class="theme-preview theme-preview-garnet"></div>
+              <span>Garnet</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="royal" />
+              <div class="theme-preview theme-preview-royal"></div>
+              <span>Royal</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="pistachio" />
+              <div class="theme-preview theme-preview-pistachio"></div>
+              <span>Pistachio</span>
+            </label>
           </div>
           <button id="random-theme-button" class="settings-random-btn" title="Randomize theme">🎲 Random</button>
+          </div>
         </div>
         
-<!-- Font Selection -->
+        <!-- Font Selection -->
         <div class="settings-section">
-          <h3>🔤 Font</h3>
-          <div class="settings-grid">
+          <h3 class="settings-section-header">🔤 Font <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
             <label class="settings-option">
               <input type="radio" name="font" value="buka-bird" />
               <div class="font-preview font-preview-buka">Aa</div>
@@ -329,14 +564,211 @@
               <div class="font-preview font-preview-playfair">Aa</div>
               <span>Playfair</span>
             </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="oswald" />
+              <div class="font-preview font-preview-oswald">Aa</div>
+              <span>Oswald</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="ubuntu" />
+              <div class="font-preview font-preview-ubuntu">Aa</div>
+              <span>Ubuntu</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="josefin-sans" />
+              <div class="font-preview font-preview-josefin-sans">Aa</div>
+              <span>Josefin Sans</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="josefin-slab" />
+              <div class="font-preview font-preview-josefin-slab">Aa</div>
+              <span>Josefin Slab</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="merriweather" />
+              <div class="font-preview font-preview-merriweather">Aa</div>
+              <span>Merriweather</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="quicksand" />
+              <div class="font-preview font-preview-quicksand">Aa</div>
+              <span>Quicksand</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="comfortaa" />
+              <div class="font-preview font-preview-comfortaa">Aa</div>
+              <span>Comfortaa</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="cabin" />
+              <div class="font-preview font-preview-cabin">Aa</div>
+              <span>Cabin</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="karla" />
+              <div class="font-preview font-preview-karla">Aa</div>
+              <span>Karla</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="lobster" />
+              <div class="font-preview font-preview-lobster">Aa</div>
+              <span>Lobster</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="bangers" />
+              <div class="font-preview font-preview-bangers">Aa</div>
+              <span>Bangers</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="indie-flower" />
+              <div class="font-preview font-preview-indie-flower">Aa</div>
+              <span>Indie Flower</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="caveat" />
+              <div class="font-preview font-preview-caveat">Aa</div>
+              <span>Caveat</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="amatic-sc" />
+              <div class="font-preview font-preview-amatic-sc">Aa</div>
+              <span>Amatic SC</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="anton" />
+              <div class="font-preview font-preview-anton">Aa</div>
+              <span>Anton</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="maven-pro" />
+              <div class="font-preview font-preview-maven-pro">Aa</div>
+              <span>Maven Pro</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="ptsans" />
+              <div class="font-preview font-preview-ptsans">Aa</div>
+              <span>PT Sans</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="ptsans-narrow" />
+              <div class="font-preview font-preview-ptsans-narrow">Aa</div>
+              <span>PT Sans Narrow</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="ptsans-caption" />
+              <div class="font-preview font-preview-ptsans-caption">Aa</div>
+              <span>PT Sans Caption</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="serif" />
+              <div class="font-preview font-preview-serif">Aa</div>
+              <span>PT Serif</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="oxygen" />
+              <div class="font-preview font-preview-oxygen">Aa</div>
+              <span>Oxygen</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="inconsolata" />
+              <div class="font-preview font-preview-inconsolata">Aa</div>
+              <span>Inconsolata</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="noto-sans" />
+              <div class="font-preview font-preview-noto-sans">Aa</div>
+              <span>Noto Sans</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="noto-serif" />
+              <div class="font-preview font-preview-noto-serif">Aa</div>
+              <span>Noto Serif</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="varela" />
+              <div class="font-preview font-preview-varela">Aa</div>
+              <span>Varela</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="varela-round" />
+              <div class="font-preview font-preview-varela-round">Aa</div>
+              <span>Varela Round</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="exo" />
+              <div class="font-preview font-preview-exo">Aa</div>
+              <span>Exo</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="exo-2" />
+              <div class="font-preview font-preview-exo-2">Aa</div>
+              <span>Exo 2</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="fjalla-one" />
+              <div class="font-preview font-preview-fjalla-one">Aa</div>
+              <span>Fjalla One</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="orbitron" />
+              <div class="font-preview font-preview-orbitron">Aa</div>
+              <span>Orbitron</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="rajdhani" />
+              <div class="font-preview font-preview-rajdhani">Aa</div>
+              <span>Rajdhani</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="teko" />
+              <div class="font-preview font-preview-teko">Aa</div>
+              <span>Teko</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="fira-sans" />
+              <div class="font-preview font-preview-fira-sans">Aa</div>
+              <span>Fira Sans</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="fira-mono" />
+              <div class="font-preview font-preview-fira-mono">Aa</div>
+              <span>Fira Mono</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="audiowide" />
+              <div class="font-preview font-preview-audiowide">Aa</div>
+              <span>Audiowide</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="boogaloo" />
+              <div class="font-preview font-preview-boogaloo">Aa</div>
+              <span>Boogaloo</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="press-start-2p" />
+              <div class="font-preview font-preview-press-start-2p">Aa</div>
+              <span>Press Start 2P</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="titan-one" />
+              <div class="font-preview font-preview-titan-one">Aa</div>
+              <span>Titan One</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="font" value="syncopate" />
+              <div class="font-preview font-preview-syncopate">Aa</div>
+              <span>Syncopate</span>
+            </label>
           </div>
           <button id="random-font-button" class="settings-random-btn" title="Randomize font">🎲 Random</button>
+          </div>
         </div>
 
         <!-- Font Size Selection -->
         <div class="settings-section">
-          <h3>📏 Font Size</h3>
-          <div class="settings-grid font-size-grid">
+          <h3 class="settings-section-header">📏 Font Size <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid font-size-grid">
             <label class="settings-option">
               <input type="radio" name="fontSize" value="14" />
               <div class="font-size-preview font-size-14-preview">Aa</div>
@@ -369,24 +801,27 @@
             </label>
           </div>
           <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
+          </div>
         </div>
 
         <div class="settings-section">
-          <h3>🔗 Custom Quick Links</h3>
-          <div class="settings-grid">
-            <div class="settings-field">
-              <label for="settings-quicklink-name">Name</label>
-              <input type="text" id="settings-quicklink-name" class="settings-input" placeholder="Button name" />
+          <h3 class="settings-section-header">🔗 Custom Quick Links <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label for="settings-quicklink-name">Name</label>
+                <input type="text" id="settings-quicklink-name" class="settings-input" placeholder="Button name" />
+              </div>
+              <div class="settings-field">
+                <label for="settings-quicklink-url">URL</label>
+                <input type="url" id="settings-quicklink-url" class="settings-input" placeholder="https://example.com" />
+              </div>
             </div>
-            <div class="settings-field">
-              <label for="settings-quicklink-url">URL</label>
-              <input type="url" id="settings-quicklink-url" class="settings-input" placeholder="https://example.com" />
-            </div>
+            <button type="button" id="add-quicklink-button" class="settings-button" data-tooltip="Add a custom quick link">➕ Add Quick Link</button>
+            <p id="quicklink-error" class="settings-error"></p>
+            <div id="custom-quicklinks-list" class="custom-quicklinks-list"></div>
+            <p class="settings-hint">Add your own quick links and they will appear next to the other quick access buttons.</p>
           </div>
-          <button type="button" id="add-quicklink-button" class="settings-button" data-tooltip="Add a custom quick link">➕ Add Quick Link</button>
-          <p id="quicklink-error" class="settings-error"></p>
-          <div id="custom-quicklinks-list" class="custom-quicklinks-list"></div>
-          <p class="settings-hint">Add your own quick links and they will appear next to the other quick access buttons.</p>
         </div>
 
       </div>
@@ -510,6 +945,107 @@
               <p>Automatically detects and highlights duplicate bookmarks.</p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="notes-modal">
+    <div class="notes-container">
+      <div class="notes-header">
+        <h2>📝 Bookmark Notes</h2>
+        <button id="notes-close" class="notes-close-btn" data-tooltip="Close">&times;</button>
+      </div>
+      <div class="notes-content">
+        <div class="notes-bookmark-info">
+          <a id="notes-bookmark-link" href="#" target="_blank" rel="noopener"></a>
+        </div>
+        <textarea id="notes-textarea" placeholder="Add your notes here..." rows="8"></textarea>
+        <div class="notes-footer">
+          <button id="notes-save" class="notes-save-btn" data-tooltip="Save note">💾 Save Note</button>
+          <button id="notes-delete" class="notes-delete-btn" data-tooltip="Delete note">🗑️ Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="context-menu" class="context-menu">
+    <button class="context-menu-item" data-action="open">🔗 Open in New Tab</button>
+    <button class="context-menu-item" data-action="background">👁️ Open in Background</button>
+    <button class="context-menu-item" data-action="copy">📋 Copy URL</button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" data-action="pin">📌 Pin/Unpin</button>
+    <button class="context-menu-item" data-action="note">📝 Add Note</button>
+    <button class="context-menu-item" data-action="edit">✎ Edit</button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item context-menu-danger" data-action="delete">🗑️ Delete</button>
+  </div>
+  
+  <div id="analytics-modal">
+    <div class="analytics-container">
+      <div class="analytics-header">
+        <h2>📊 Bookmark Analytics</h2>
+        <button id="analytics-close" class="analytics-close-btn" data-tooltip="Close">&times;</button>
+      </div>
+      <div class="analytics-content">
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="analytics-value" id="analytics-total">0</div>
+            <div class="analytics-label">Total Bookmarks</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analytics-folders">0</div>
+            <div class="analytics-label">Folders</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analytics-broken">0</div>
+            <div class="analytics-label">Broken Links</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analytics-duplicates">0</div>
+            <div class="analytics-label">Duplicates</div>
+          </div>
+          <div class="analytics-card analytics-health-card">
+            <div class="analytics-value" id="analytics-health">0%</div>
+            <div class="analytics-label">Health Score</div>
+          </div>
+        </div>
+        
+        <div class="analytics-section">
+          <h3>🏆 Top Domains</h3>
+          <div id="analytics-domains" class="analytics-list"></div>
+        </div>
+        
+        <div class="analytics-section">
+          <h3>⭐ Most Visited</h3>
+          <div id="analytics-most-visited" class="analytics-list"></div>
+        </div>
+        
+        <div class="analytics-section">
+          <h3>🕐 Recently Added</h3>
+          <div id="analytics-recent" class="analytics-list"></div>
+        </div>
+        
+        <div class="analytics-section">
+          <h3>📅 Oldest Bookmarks</h3>
+          <div id="analytics-oldest" class="analytics-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="import-validation-modal">
+    <div class="import-validation-container">
+      <div class="import-validation-header">
+        <h2>📋 Import Validation Report</h2>
+        <button id="import-validation-close" class="import-validation-close-btn" data-tooltip="Close">&times;</button>
+      </div>
+      <div class="import-validation-content">
+        <div id="import-validation-summary" class="import-validation-summary"></div>
+        <div id="import-validation-details" class="import-validation-details"></div>
+        <div class="import-validation-actions">
+          <button id="import-validate-cancel" class="import-validation-btn import-validation-cancel">Cancel</button>
+          <button id="import-validate-confirm" class="import-validation-btn import-validation-confirm">Import Anyway</button>
         </div>
       </div>
     </div>

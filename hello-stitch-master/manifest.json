@@ -32,5 +32,6 @@
         "required": ["none"]
       }
     }
-  }
+  },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' 'sha256-sB2YVxvEwwnlb2Z51X3Hsuj7GKY58AupFhFmkzbASRk='; object-src 'self'"
 }

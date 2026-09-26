@@ -406,110 +406,121 @@ function updateDuplicates() {
 }
 
 chrome.bookmarks.getTree((items) => {
-  // Hide loading indicator and show main content after 2 seconds to ensure it's visible
-  const loadingIndicator = document.getElementById("loading-indicator");
-  if (loadingIndicator) {
-    setTimeout(function() {
-      loadingIndicator.classList.add("hidden");
-    }, 160);
-  }
-  
-  // Show main content after bookmarks are loaded
-  const header = document.getElementById("header");
-  const searchContainer = document.getElementById("search-container");
-  const container = document.getElementById("container");
-  const goToTop = document.getElementById("go-to-top");
-  
-  if (header) header.classList.add("loaded");
-  if (searchContainer) searchContainer.classList.add("loaded");
-  if (container) container.classList.add("loaded");
-  if (goToTop) goToTop.classList.add("loaded");
-  
-  // Render title now that bookmarks are loaded and header is visible
-  const welcomeElement = document.getElementById("welcome");
-  const CUSTOM_TITLE_KEY = "customTitle";
-  const DEFAULT_TITLE = "Hello, Stitch";
-  
-  // Check for custom title saved in localStorage
-  const savedCustomTitle = localStorage.getItem(CUSTOM_TITLE_KEY);
-  const baseTitle = savedCustomTitle || DEFAULT_TITLE;
-  
-  if (welcomeElement) {
-    // Generate dynamic title with date and time
-    const now = new Date();
-    const dayName = now.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-    const monthName = now.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
-    const day = now.getDate();
-    const year = now.getFullYear();
-    const hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const hour12 = hours % 12 || 12;
+  try {
+    console.log("[Stitch] getTree callback started");
+    // Hide loading indicator and show main content after 2 seconds to ensure it's visible
+    const loadingIndicator = document.getElementById("loading-indicator");
+    if (loadingIndicator) {
+      setTimeout(function() {
+        loadingIndicator.classList.add("hidden");
+      }, 160);
+    }
     
-    // Create formatted title with date and time, wrapping date and time in underlined spans
-    const formattedTitle = baseTitle + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+    // Show main content after bookmarks are loaded
+    const header = document.getElementById("header");
+    const searchContainer = document.getElementById("search-container");
+    const container = document.getElementById("container");
+    const goToTop = document.getElementById("go-to-top");
     
-    // Render the formatted title to the welcome element, preserving underline spans
-    welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
-  }
-  
-  // Find the "Stitch" folder
-  const bookmarksBar = items[0].children.find((x) =>
-    options.ROOT_FOLDER.test(x.title)
-  );
+    if (header) header.classList.add("loaded");
+    if (searchContainer) searchContainer.classList.add("loaded");
+    if (container) container.classList.add("loaded");
+    if (goToTop) goToTop.classList.add("loaded");
+    
+    console.log("[Stitch] Main content shown, container:", !!container);
+    
+    // Render title now that bookmarks are loaded and header is visible
+    const welcomeElement = document.getElementById("welcome");
+    const CUSTOM_TITLE_KEY = "customTitle";
+    const DEFAULT_TITLE = "Hello, Stitch";
+    
+    // Check for custom title saved in localStorage
+    const savedCustomTitle = localStorage.getItem(CUSTOM_TITLE_KEY);
+    const baseTitle = savedCustomTitle || DEFAULT_TITLE;
+    
+    if (welcomeElement) {
+      // Generate dynamic title with date and time
+      const now = new Date();
+      const dayName = now.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+      const monthName = now.toLocaleDateString("en-US", { month: "long" }).toLowerCase();
+      const day = now.getDate();
+      const year = now.getFullYear();
+      const hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      const hour12 = hours % 12 || 12;
+      
+      // Create formatted title with date and time, wrapping date and time in underlined spans
+      const formattedTitle = baseTitle + " today is <span class=\"stitch-underline\">" + dayName + " " + monthName + " " + day + ", " + year + "</span> and the time is <span class=\"stitch-underline\">" + hour12 + ":" + minutes + " " + ampm + "</span>";
+      
+      // Render the formatted title to the welcome element, preserving underline spans
+      welcomeElement.innerHTML = renderTitleWithUnderline(formattedTitle);
+    }
+    
+    // Find the "Stitch" folder
+    const bookmarksBar = items[0].children.find((x) =>
+      options.ROOT_FOLDER.test(x.title)
+    );
 
-  if (!bookmarksBar) {
-    console.error(`Was expecting a folder called '${options.ROOT_FOLDER}'`);
-    return;
-  }
+    if (!bookmarksBar) {
+      console.error("[Stitch] Was expecting a folder called '", options.ROOT_FOLDER, "' but got:", items[0].children && items[0].children.map(function(c) { return c.title; }));
+      return;
+    }
 
-  // Separate root bookmarks (bookmarks at root level) from folders
-  const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
-  const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+    // Separate root bookmarks (bookmarks at root level) from folders
+    const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
+    const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
 
-  // Create root column with title "/" for root-level bookmarks
-  const rootColumn = {
-    title: "/",
-    children: [],
-  };
-
-  // Add root-level bookmarks to the root column
-  rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
-
-  // Add root column to columns array
-  columns.push(rootColumn);
-
-  // Process each subfolder as a column
-  rootFolders.forEach((node) => {
-    const column = {
-      title: node.title,
+    // Create root column with title "/" for root-level bookmarks
+    const rootColumn = {
+      title: "/",
       children: [],
     };
 
-    visit(column, node);
+    // Add root-level bookmarks to the root column
+    rootBookmarks.forEach((node) => addBookmark(rootColumn, node));
 
-    columns.push(column);
-  });
+    // Add root column to columns array
+    columns.push(rootColumn);
 
-  currentColumns = columns;
-  // Set flag to indicate bookmarks have been loaded
-  bookmarksLoaded = true;
-  
-  // Set default sort preference to "frequency" if not already set
-  if (!localStorage.getItem(SORT_PREFERENCE_KEY)) {
-    localStorage.setItem(SORT_PREFERENCE_KEY, "frequency");
+    // Process each subfolder as a column
+    rootFolders.forEach((node) => {
+      const column = {
+        title: node.title,
+        children: [],
+      };
+
+      visit(column, node);
+
+      columns.push(column);
+    });
+
+    currentColumns = columns;
+    // Set flag to indicate bookmarks have been loaded
+    bookmarksLoaded = true;
+    
+    console.log("[Stitch] Bookmarks loaded, columns:", columns.length, "rootBookmarks:", rootBookmarks.length, "rootFolders:", rootFolders.length);
+    
+    // Set default sort preference to "frequency" if not already set
+    if (!localStorage.getItem(SORT_PREFERENCE_KEY)) {
+      localStorage.setItem(SORT_PREFERENCE_KEY, "frequency");
+    }
+    // Update visit counts first, then render after counts are available
+    updateVisitCounts(() => {
+      console.log("[Stitch] updateVisitCounts callback, rendering bookmarks");
+      updateDuplicates();
+      autoTagAll();
+      renderCurrent();
+      console.log("[Stitch] renderCurrent called");
+      generateFilterButtons(rootFolders);
+      updateSortButton();
+      autoApplyWorkMode();
+      updateCloseAllVisibility();
+      updateWorkModeButton();
+    });
+  } catch (e) {
+    console.error("[Stitch] bookmarks init failed", e);
   }
-  // Update visit counts first, then render after counts are available
-  updateVisitCounts(() => {
-    updateDuplicates();
-    autoTagAll();
-    renderCurrent();
-    generateFilterButtons(rootFolders);
-    updateSortButton();
-    autoApplyWorkMode();
-    updateCloseAllVisibility();
-    updateWorkModeButton();
-  });
 });
 
 function refreshBookmarks() {
@@ -2542,6 +2553,69 @@ document.addEventListener("DOMContentLoaded", function() {
   const randomFontSizeBtn = document.getElementById("random-font-size-button");
   if (randomFontSizeBtn) {
     randomFontSizeBtn.addEventListener("click", randomizeFontSize);
+  }
+
+  const collapseAllBtn = document.getElementById("collapse-all-button");
+  if (collapseAllBtn) {
+    collapseAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.add("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.add("collapsed");
+        if (ul) ul.style.display = "none";
+      });
+    });
+  }
+
+  const expandAllBtn = document.getElementById("expand-all-button");
+  if (expandAllBtn) {
+    expandAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+    });
+  }
+
+  const resetLayoutBtn = document.getElementById("reset-layout-button");
+  if (resetLayoutBtn) {
+    resetLayoutBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+      renderCurrent();
+    });
+  }
+
+  const compactModeBtn = document.getElementById("compact-mode-button");
+  if (compactModeBtn) {
+    compactModeBtn.addEventListener("click", function() {
+      document.body.classList.toggle("compact-mode");
+      const isCompact = document.body.classList.contains("compact-mode");
+      if (isCompact) {
+        compactModeBtn.classList.add("active");
+      } else {
+        compactModeBtn.classList.remove("active");
+      }
+    });
+  }
+
+  const analyticsBtn = document.getElementById("analytics-button");
+  if (analyticsBtn) {
+    analyticsBtn.addEventListener("click", function() {
+      const modal = document.getElementById("analytics-modal");
+      if (modal) {
+        modal.classList.add("active");
+      }
+    });
   }
 });
 
