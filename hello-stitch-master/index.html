@@ -45,17 +45,6 @@
   
   <div id="header">
     <h1 id="welcome"></h1>
-    <select id="theme-select" class="theme-select" data-tooltip="Select theme">
-      <option value="default">Default Theme</option>
-    </select>
-    <select id="font-select" class="font-select" data-tooltip="Select font">
-      <option value="poppins">Poppins</option>
-    </select>
-    <select id="sort-select" class="font-select" data-tooltip="Sort bookmarks">
-      <option value="frequency">Most Visited</option>
-      <option value="date">Date Added</option>
-      <option value="alphabetical">A-Z</option>
-    </select>
   </div> 
   
   <div id="search-container">
@@ -90,13 +79,15 @@
       </div>
     </div>
     <div class="quick-links">
-      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><span class="btn-icon">💬</span> ChatGPT</button>
-      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><span class="btn-icon">🧠</span> Grok</button>
-      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><span class="btn-icon">🛒</span> Amazon</button>
-      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><span class="btn-icon">🤖</span> Gemini</button>
-      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><span class="btn-icon">🤖</span> Reddit</button>
-      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><span class="btn-icon">🎮</span> Twitch</button>
-      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><span class="btn-icon">▶️</span> YouTube</button>
+      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><img class="quick-link-favicon" src="" alt="" data-url="https://chat.openai.com/" /></button>
+      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><img class="quick-link-favicon" src="" alt="" data-url="https://grok.com/" /></button>
+      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><img class="quick-link-favicon" src="" alt="" data-url="https://www.amazon.com/" /></button>
+      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><img class="quick-link-favicon" src="" alt="" data-url="https://gemini.google.com/" /></button>
+      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><img class="quick-link-favicon" src="" alt="" data-url="https://www.reddit.com/" /></button>
+      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><img class="quick-link-favicon" src="" alt="" data-url="https://www.twitch.tv/" /></button>
+      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><img class="quick-link-favicon" src="" alt="" data-url="https://www.youtube.com/" /></button>
+      <button class="search-button instagram-btn" id="instagram-button" data-tooltip="Open Instagram" aria-label="Open Instagram"><img class="quick-link-favicon" src="" alt="" data-url="https://www.instagram.com/" /></button>
+      <button class="search-button facebook-btn" id="facebook-button" data-tooltip="Open Facebook" aria-label="Open Facebook"><img class="quick-link-favicon" src="" alt="" data-url="https://www.facebook.com/" /></button>
     </div>
     <div class="filter-buttons">
       <button id="close-all-btn" class="small-button" data-tooltip="Close all">Close All</button>
@@ -107,15 +98,7 @@
       <button id="sort-alphabetical" class="small-button" data-tooltip="Sort A-Z">A-Z</button>
     </div>
     <div class="import-export-buttons">
-      <button id="collapse-all-button" class="small-button" data-tooltip="Collapse all folders">📁 Collapse All</button>
-      <button id="expand-all-button" class="small-button" data-tooltip="Expand all folders">📂 Expand All</button>
-      <button id="reset-layout-button" class="small-button" data-tooltip="Reset column layout">🔄 Reset Layout</button>
-      <button id="compact-mode-button" class="small-button" data-tooltip="Toggle compact mode">📦 Compact</button>
-      <button id="analytics-button" class="small-button" data-tooltip="View bookmark analytics">📊 Analytics</button>
       <button id="settings-button" class="small-button" data-tooltip="Open settings">⚙️ Settings</button>
-      <button id="export-button" class="small-button" data-tooltip="Export Bookmarks">📤 Export</button>
-      <button id="import-button" class="small-button" data-tooltip="Import Bookmarks">📥 Import</button>
-      <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
   </div>
   
@@ -821,6 +804,49 @@
             <p id="quicklink-error" class="settings-error"></p>
             <div id="custom-quicklinks-list" class="custom-quicklinks-list"></div>
             <p class="settings-hint">Add your own quick links and they will appear next to the other quick access buttons.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-header">🖥️ Header Controls <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label for="settings-theme-select">Theme</label>
+                <select id="settings-theme-select" class="settings-input" data-tooltip="Select theme">
+                  <option value="default">Default Theme</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label for="settings-font-select">Font</label>
+                <select id="settings-font-select" class="settings-input" data-tooltip="Select font">
+                  <option value="poppins">Poppins</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label for="settings-sort-select">Sort</label>
+                <select id="settings-sort-select" class="settings-input" data-tooltip="Sort bookmarks">
+                  <option value="frequency">Most Visited</option>
+                  <option value="date">Date Added</option>
+                  <option value="alphabetical">A-Z</option>
+                </select>
+              </div>
+            </div>
+            <p class="settings-hint">Choose the default theme, font, and sort order shown on the main page.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-header">⚡ Quick Actions <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
+              <button type="button" id="settings-collapse-all-button" class="settings-button" data-tooltip="Collapse all folders">📁 Collapse All</button>
+              <button type="button" id="settings-expand-all-button" class="settings-button" data-tooltip="Expand all folders">📂 Expand All</button>
+              <button type="button" id="settings-reset-layout-button" class="settings-button" data-tooltip="Reset column layout">🔄 Reset Layout</button>
+              <button type="button" id="settings-compact-mode-button" class="settings-button" data-tooltip="Toggle compact mode">📦 Compact Mode</button>
+              <button type="button" id="settings-analytics-button" class="settings-button" data-tooltip="View bookmark analytics">📊 Analytics</button>
+            </div>
+            <p class="settings-hint">Quick access to layout controls, analytics, and backup actions.</p>
           </div>
         </div>
 

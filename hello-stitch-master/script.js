@@ -1161,11 +1161,65 @@ document.addEventListener("DOMContentLoaded", function() {
     { id: "reddit-button", url: "https://www.reddit.com/" },
     { id: "twitch-button", url: "https://www.twitch.tv/" },
     { id: "youtube-button", url: "https://www.youtube.com/" },
+    { id: "instagram-button", url: "https://www.instagram.com/" },
+    { id: "facebook-button", url: "https://www.facebook.com/" },
   ];
+
+  const QUICK_LINK_VISITS_KEY = "quickLinkVisits";
+
+  function getQuickLinkVisits() {
+    try {
+      return JSON.parse(localStorage.getItem(QUICK_LINK_VISITS_KEY) || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveQuickLinkVisit(url) {
+    const visits = getQuickLinkVisits();
+    visits[url] = (visits[url] || 0) + 1;
+    try {
+      localStorage.setItem(QUICK_LINK_VISITS_KEY, JSON.stringify(visits));
+    } catch (e) {}
+  }
+
+  function getSortedQuickLinks() {
+    const visits = getQuickLinkVisits();
+    return quickLinks.slice().sort(function(a, b) {
+      return (visits[b.url] || 0) - (visits[a.url] || 0);
+    });
+  }
+
+  function reorderQuickLinks() {
+    const container = document.querySelector(".quick-links");
+    if (!container) return;
+    const sorted = getSortedQuickLinks();
+    sorted.forEach(function(link) {
+      const btn = document.getElementById(link.id);
+      if (btn) container.appendChild(btn);
+    });
+  }
+
   quickLinks.forEach(function(link) {
     const btn = document.getElementById(link.id);
-    if (btn) btn.addEventListener("click", function() { window.location.href = link.url; });
+    if (btn) {
+      btn.addEventListener("click", function() {
+        saveQuickLinkVisit(link.url);
+        reorderQuickLinks();
+        window.location.href = link.url;
+      });
+      const img = btn.querySelector("img.quick-link-favicon");
+      if (img && !img.getAttribute("data-favicon-set")) {
+        const faviconUrl = getFaviconUrl(link.url);
+        if (faviconUrl) {
+          img.src = faviconUrl;
+        }
+        img.setAttribute("data-favicon-set", "true");
+      }
+    }
   });
+
+  reorderQuickLinks();
 
   const exportBtn = document.getElementById("export-button");
   if (exportBtn) exportBtn.addEventListener("click", exportBookmarksToFile);
@@ -2395,8 +2449,7 @@ function initSettingsModal() {
       const selectedTheme = document.querySelector('input[name="theme"]:checked');
       if (selectedTheme) {
         applyTheme(selectedTheme.value);
-        // Also update the header dropdown
-        const headerThemeSelect = document.getElementById("theme-select");
+        const headerThemeSelect = document.getElementById("settings-theme-select");
         if (headerThemeSelect) headerThemeSelect.value = selectedTheme.value;
       }
 
@@ -2404,8 +2457,7 @@ function initSettingsModal() {
       const selectedFont = document.querySelector('input[name="font"]:checked');
       if (selectedFont) {
         applyFont(selectedFont.value);
-        // Also update the header dropdown
-        const headerFontSelect = document.getElementById("font-select");
+        const headerFontSelect = document.getElementById("settings-font-select");
         if (headerFontSelect) headerFontSelect.value = selectedFont.value;
       }
 
@@ -2415,12 +2467,10 @@ function initSettingsModal() {
         applyFontSize(selectedFontSize.value);
       }
 
-      // Save sort preference
       const settingsSortSelect = document.getElementById("settings-sort-select");
       if (settingsSortSelect) {
         setSortPreference(settingsSortSelect.value);
-        // Also update the header dropdown
-        const headerSortSelect = document.getElementById("sort-select");
+        const headerSortSelect = document.getElementById("settings-sort-select");
         if (headerSortSelect) headerSortSelect.value = settingsSortSelect.value;
       }
 
@@ -2461,6 +2511,72 @@ function initSettingsModal() {
   if (sortSelect) {
     sortSelect.addEventListener("change", function() {
       setSortPreference(this.value);
+    });
+  }
+
+  const settingsCollapseAllBtn = document.getElementById("settings-collapse-all-button");
+  if (settingsCollapseAllBtn) {
+    settingsCollapseAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.add("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.add("collapsed");
+        if (ul) ul.style.display = "none";
+      });
+    });
+  }
+
+  const settingsExpandAllBtn = document.getElementById("settings-expand-all-button");
+  if (settingsExpandAllBtn) {
+    settingsExpandAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+    });
+  }
+
+  const settingsResetLayoutBtn = document.getElementById("settings-reset-layout-button");
+  if (settingsResetLayoutBtn) {
+    settingsResetLayoutBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+      renderCurrent();
+    });
+  }
+
+  const settingsCompactModeBtn = document.getElementById("settings-compact-mode-button");
+  if (settingsCompactModeBtn) {
+    settingsCompactModeBtn.addEventListener("click", function() {
+      document.body.classList.toggle("compact-mode");
+      const isCompact = document.body.classList.contains("compact-mode");
+      if (isCompact) {
+        settingsCompactModeBtn.classList.add("active");
+      } else {
+        settingsCompactModeBtn.classList.remove("active");
+      }
+    });
+  }
+
+  const settingsAnalyticsBtn = document.getElementById("settings-analytics-button");
+  if (settingsAnalyticsBtn) {
+    settingsAnalyticsBtn.addEventListener("click", function() {
+      const modal = document.getElementById("analytics-modal");
+      if (modal) {
+        modal.classList.add("active");
+        if (typeof showAnalytics === "function") {
+          showAnalytics();
+        }
+      }
     });
   }
 }
