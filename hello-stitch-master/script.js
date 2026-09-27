@@ -2383,6 +2383,20 @@ function initSettingsModal() {
     settingsModal.classList.add("active");
   });
 
+  // Tab switching
+  const tabButtons = document.querySelectorAll(".settings-tab");
+  const tabPanels = document.querySelectorAll(".settings-tab-panel");
+  tabButtons.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const tabName = this.getAttribute("data-tab");
+      tabButtons.forEach(function(b) { b.classList.remove("active"); });
+      tabPanels.forEach(function(panel) { panel.classList.remove("active"); });
+      this.classList.add("active");
+      const targetPanel = document.querySelector('.settings-tab-panel[data-tab-panel="' + tabName + '"]');
+      if (targetPanel) targetPanel.classList.add("active");
+    });
+  });
+
   // Close modal
   if (settingsClose) {
     settingsClose.addEventListener("click", function() {

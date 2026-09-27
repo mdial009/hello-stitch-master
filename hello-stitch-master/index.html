@@ -171,7 +171,15 @@
   <div id="settings-modal">
     <div class="settings-container">
       <div class="settings-header">
-        <h2>⚙️ Settings</h2>
+        <div class="settings-header-top">
+          <h2>⚙️ Settings</h2>
+          <button id="settings-close" class="settings-close-btn" data-tooltip="Close settings">&times;</button>
+        </div>
+        <div class="settings-tabs">
+          <button type="button" class="settings-tab active" data-tab="appearance">🎨 Appearance</button>
+          <button type="button" class="settings-tab" data-tab="layout">🖥️ Layout & Behavior</button>
+          <button type="button" class="settings-tab" data-tab="data">💾 Data & Backup</button>
+        </div>
         <div class="settings-header-actions">
           <span class="settings-header-label">Import/Export:</span>
           <div class="settings-header-buttons">
@@ -189,11 +197,11 @@
             <option value="alphabetical">A-Z</option>
           </select>
         </div>
-        <button id="settings-close" class="settings-close-btn" data-tooltip="Close settings">&times;</button>
       </div>
       <div class="settings-content">
+        <div class="settings-tab-panel active" data-tab-panel="appearance">
         
-        <!-- Custom Title Section -->
+         <!-- Custom Title Section -->
         <div class="settings-section">
           <h3 class="settings-section-header">📝 Custom Title <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
@@ -786,7 +794,10 @@
           <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
           </div>
         </div>
-
+        </div>
+        
+        <div class="settings-tab-panel" data-tab-panel="data">
+        
         <div class="settings-section">
           <h3 class="settings-section-header">🔗 Custom Quick Links <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
@@ -806,7 +817,10 @@
             <p class="settings-hint">Add your own quick links and they will appear next to the other quick access buttons.</p>
           </div>
         </div>
-
+        </div>
+        
+        <div class="settings-tab-panel" data-tab-panel="layout">
+        
         <div class="settings-section">
           <h3 class="settings-section-header">🖥️ Header Controls <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
@@ -849,7 +863,8 @@
             <p class="settings-hint">Quick access to layout controls, analytics, and backup actions.</p>
           </div>
         </div>
-
+        </div>
+        
       </div>
       <div class="settings-footer">
         <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
