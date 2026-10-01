@@ -9,6 +9,33 @@ const PINS_KEY = "pinnedBookmarks";
 const TAGS_KEY = "bookmarkTags";
 const FONT_SIZE_KEY = "selectedFontSize";
 const SEARCH_HISTORY_KEY = "searchHistory";
+const ARCHIVED_FOLDERS_KEY = "archivedFolders";
+
+function getArchivedFolders() {
+  try {
+    return JSON.parse(localStorage.getItem(ARCHIVED_FOLDERS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveArchivedFolders(folders) {
+  try {
+    localStorage.setItem(ARCHIVED_FOLDERS_KEY, JSON.stringify(folders));
+  } catch (e) {}
+}
+
+function isFolderArchived(folderName) {
+  return getArchivedFolders().indexOf(folderName) !== -1;
+}
+
+function toggleFolderArchive(folderName) {
+  const folders = getArchivedFolders();
+  const idx = folders.indexOf(folderName);
+  if (idx === -1) folders.push(folderName);
+  else folders.splice(idx, 1);
+  saveArchivedFolders(folders);
+}
 const USAGE_PATTERNS_KEY = "usagePatterns";
 
 // Initialize search history and usage patterns if not exist
@@ -469,7 +496,7 @@ chrome.bookmarks.getTree((items) => {
 
     // Separate root bookmarks (bookmarks at root level) from folders
     const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
-    const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+    const rootFolders = bookmarksBar.children.filter((node) => !!node.children && !isFolderArchived(node.title));
 
     // Create root column with title "/" for root-level bookmarks
     const rootColumn = {
@@ -538,7 +565,7 @@ function refreshBookmarks() {
 
     // Separate root bookmarks (bookmarks at root level) from folders
     const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
-    const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+    const rootFolders = bookmarksBar.children.filter((node) => !!node.children && !isFolderArchived(node.title));
 
     // Create root column with title "/" for root-level bookmarks
     const rootColumn = {
@@ -2365,6 +2392,51 @@ window.addEventListener('unload', function() {
 // ===========================================
 // SETTINGS MODAL FUNCTIONALITY
 // ===========================================
+
+function renderArchivedFoldersList() {
+  const container = document.getElementById("archived-folders-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const allFolders = [];
+  columns.forEach(function(col) {
+    if (col.title && col.title !== "/") {
+      allFolders.push(col.title);
+    }
+  });
+
+  const archived = getArchivedFolders();
+
+  if (!allFolders.length) {
+    container.innerHTML = '<p class="settings-hint">No folders found.</p>';
+    return;
+  }
+
+  allFolders.forEach(function(folderName) {
+    const item = document.createElement("div");
+    item.className = "settings-archived-item";
+
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = archived.indexOf(folderName) === -1;
+
+    const text = document.createTextNode(folderName);
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+
+    checkbox.addEventListener("change", function() {
+      toggleFolderArchive(folderName);
+      refreshBookmarks();
+    });
+
+    item.appendChild(label);
+    container.appendChild(item);
+  });
+}
+
 function initSettingsModal() {
   const settingsModal = document.getElementById("settings-modal");
   const settingsButton = document.getElementById("settings-button");
@@ -2380,6 +2452,7 @@ function initSettingsModal() {
   // Open modal
   settingsButton.addEventListener("click", function() {
     loadSettingsValues();
+    renderArchivedFoldersList();
     settingsModal.classList.add("active");
   });
 
