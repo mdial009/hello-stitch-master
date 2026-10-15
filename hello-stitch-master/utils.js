@@ -25,10 +25,16 @@ function escapeHtml(str) {
  * @param {any} fallback - Default value if parse fails
  * @returns {any} - Parsed value or fallback
  */
-function safeLocalStorageGet(key, fallback) {
+function safeLocalStorageGet(key, fallback, isValid) {
   try {
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
+    if (!item) return fallback;
+    const value = JSON.parse(item);
+    if (isValid && !isValid(value)) {
+      console.warn(`Invalid value in localStorage key "${key}"`);
+      return fallback;
+    }
+    return value;
   } catch (e) {
     console.warn(`Failed to parse localStorage key "${key}":`, e);
     return fallback;
@@ -40,6 +46,25 @@ function normalizeUrl(url) {
     return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
   } catch (e) {
     return url;
+  }
+}
+
+function sortBookmarksInManualOrder(bookmarks) {
+  return bookmarks
+    .map((bookmark, originalIndex) => ({ bookmark, originalIndex }))
+    .sort((a, b) => {
+      const orderA = Number.isFinite(a.bookmark.manualOrder) ? a.bookmark.manualOrder : a.originalIndex;
+      const orderB = Number.isFinite(b.bookmark.manualOrder) ? b.bookmark.manualOrder : b.originalIndex;
+      return orderA - orderB || a.originalIndex - b.originalIndex;
+    })
+    .map(({ bookmark }) => bookmark);
+}
+
+function isSafeBookmarkUrl(url) {
+  try {
+    return !["javascript:", "data:", "vbscript:", "blob:"].includes(new URL(url).protocol.toLowerCase());
+  } catch (e) {
+    return false;
   }
 }
 
@@ -100,11 +125,109 @@ function cleanUrlForDisplay(url) {
 
 function getFaviconUrl(url) {
   try {
+    if (safeLocalStorageGet("remoteFaviconsEnabled", false, (value) => typeof value === "boolean") !== true) {
+      return "";
+    }
     const domain = new URL(url).hostname;
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
   } catch (e) {
     return "";
   }
+}
+
+function validateBookmarkImport(columns) {
+  if (!Array.isArray(columns)) {
+    throw new Error("The backup must contain a list of bookmark folders.");
+  }
+
+  const allowedProtocols = new Set(["http:", "https:", "ftp:", "file:", "mailto:"]);
+  return columns.map((column, columnIndex) => {
+    if (!column || typeof column !== "object" || Array.isArray(column) ||
+        typeof column.title !== "string" || (!column.title.trim() && column.title !== "/") ||
+        !Array.isArray(column.children)) {
+      throw new Error(`Folder ${columnIndex + 1} has an invalid format.`);
+    }
+
+    const children = column.children.map((bookmark, bookmarkIndex) => {
+      if (!bookmark || typeof bookmark !== "object" || Array.isArray(bookmark) ||
+          typeof bookmark.title !== "string" || typeof bookmark.url !== "string") {
+        throw new Error(`Bookmark ${bookmarkIndex + 1} in folder "${column.title}" has an invalid format.`);
+      }
+
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(bookmark.url.trim());
+      } catch (e) {
+        throw new Error(`Bookmark "${bookmark.title}" has an invalid URL.`);
+      }
+      if (!isSafeBookmarkUrl(bookmark.url.trim()) || !allowedProtocols.has(parsedUrl.protocol)) {
+        throw new Error(`Bookmark "${bookmark.title}" uses a URL scheme that cannot be imported.`);
+      }
+
+      const path = bookmark.path === undefined ? [] : bookmark.path;
+      if (!Array.isArray(path) || !path.every((part) => typeof part === "string" && part.trim())) {
+        throw new Error(`Bookmark "${bookmark.title}" has an invalid folder path.`);
+      }
+
+      const validated = {
+        title: bookmark.title,
+        url: bookmark.url.trim(),
+        path: path.slice(),
+      };
+      if (Number.isInteger(bookmark.manualOrder) && bookmark.manualOrder >= 0) {
+        validated.manualOrder = bookmark.manualOrder;
+      }
+      return validated;
+    });
+    const orderedChildren = sortBookmarksInManualOrder(children);
+
+    return {
+      title: column.title,
+      children: orderedChildren,
+    };
+  });
+}
+
+function parseBookmarkBackup(value) {
+  if (Array.isArray(value)) {
+    return { bookmarks: validateBookmarkImport(value), settings: null, isFullBackup: false };
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !["hello-stitch-bookmarks", "hello-stitch-full-backup"].includes(value.format) ||
+      value.version !== 1) {
+    throw new Error("This is not a supported Hello Stitch backup.");
+  }
+
+  const bookmarks = validateBookmarkImport(value.bookmarks);
+  if (value.format === "hello-stitch-bookmarks") {
+    return { bookmarks, settings: null, isFullBackup: false };
+  }
+  if (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings) ||
+      Object.entries(value.settings).some(([key, item]) =>
+        !key || typeof item !== "string"
+      )) {
+    throw new Error("The full backup contains invalid settings.");
+  }
+  return { bookmarks, settings: value.settings, isFullBackup: true };
+}
+
+function isValidWorkHoursConfig(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const validTime = (time) => typeof time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+  const days = value.days;
+  return validTime(value.startTime) && validTime(value.endTime) &&
+    !!days && typeof days === "object" && !Array.isArray(days) &&
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].every((day) => typeof days[day] === "boolean");
+}
+
+function getSavedWorkModeFolders() {
+  return safeLocalStorageGet("workModeFolders", [], (value) =>
+    Array.isArray(value) && value.every((folder) => typeof folder === "string")
+  );
+}
+
+function getWorkModeEnabled() {
+  return safeLocalStorageGet("workModeEnabled", false, (value) => typeof value === "boolean");
 }
 
 function getFolderIcon(folderTitle) {
@@ -313,7 +436,7 @@ function isESTJobsTimeAndWorkday() {
 
 function isWithinWorkHours() {
   // Get saved work hours config from localStorage using safe parsing
-  const config = safeLocalStorageGet("workHoursConfig", null);
+  const config = safeLocalStorageGet("workHoursConfig", null, isValidWorkHoursConfig);
   
   // Default work hours: Mon-Fri 8:00 AM - 4:00 PM EST
   const defaultConfig = {
@@ -359,7 +482,7 @@ function getWorkHoursConfig() {
     startTime: "08:00",
     endTime: "16:00",
     days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false }
-  });
+  }, isValidWorkHoursConfig);
 }
 
 function showWorkModeModal(columns) {
@@ -382,7 +505,7 @@ function showWorkModeModal(columns) {
     "workmode-sat",
     "workmode-sun"
   ];
-  const workModeEnabled = JSON.parse(localStorage.getItem("workModeEnabled") || "false");
+  const workModeEnabled = getWorkModeEnabled();
   const workHoursConfig = getWorkHoursConfig();
   const sections = Array.from(modal.querySelectorAll(".workmode-section"));
 
@@ -478,7 +601,7 @@ function showWorkModeModal(columns) {
     new Set(allFolders.map((f) => f.path))
   ).map((path) => allFolders.find((f) => f.path === path));
 
-  const saved = JSON.parse(localStorage.getItem("workModeFolders") || "[]");
+  const saved = getSavedWorkModeFolders();
 
   const selectAllLabel = document.createElement("label");
   selectAllLabel.style.display = "flex";
@@ -601,4 +724,34 @@ function showWorkModeModal(columns) {
     if (typeof applyWorkModeFilter === "function") applyWorkModeFilter();
     if (typeof autoApplyWorkMode === "function") autoApplyWorkMode();
   };
-}
+  }
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+      trunc,
+      escapeHtml,
+      safeLocalStorageGet,
+      normalizeUrl,
+      sortBookmarksInManualOrder,
+      isSafeBookmarkUrl,
+      cleanUrlForDisplay,
+      getFaviconUrl,
+      getFolderIcon,
+      getBookmarkAge,
+      debounce,
+      escapeRegExp,
+      normalizeAccents,
+      getUSHolidays,
+      isUSHoliday,
+      isUSWorkdayEST,
+      isESTJobsTimeAndWorkday,
+      isWithinWorkHours,
+      getWorkHoursConfig,
+      validateBookmarkImport,
+      parseBookmarkBackup,
+      isValidWorkHoursConfig,
+      getSavedWorkModeFolders,
+      getWorkModeEnabled,
+      showWorkModeModal,
+    };
+  }

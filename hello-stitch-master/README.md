@@ -9,9 +9,9 @@
 
 ## Notes
 
-- In Firefox you'll have to manually set the home page.
-  - Check the console for the URL in a new Hello, Stitch tab
-- In Chrome remove the `applications` object in the `manifest.json` this is Firefox only
+- This directory is the source of truth for the extension. The sibling folders named `Copy` and exported ZIP files are not development sources.
+- Chrome and Firefox use the same Manifest V3 `manifest.json`.
+- Remote favicon lookups are off by default. Enabling them requests optional access to Google and sends bookmark hostnames to Google. The Google Fonts stylesheet used by the UI is a separate existing network request.
 
 ## Roadmap / Contributions
 
@@ -27,25 +27,33 @@ Firefox
 
 1. Go to `about:debugging` in address bar
 2. Click _Load Temporary Add-on_ button on top right
-3. Open any file at root directory of this extension's source
+3. Select `manifest.json` in this directory.
 
 Chrome
 
 1. Go to `chrome://extensions/` in address bar
 2. Tick _Developer mode_ toggle at top right
 3. Click _Load Unpacked_
-4. Choose the directory of this extension's source code
+4. Choose this directory (the Chrome Manifest V3 source).
 
 
-### Additional Notes
+## Importing and exporting
 
-*Styles*: All CSS has been pulled out of the HTML file and now lives in `styles.css`. This keeps markup clean and makes layout tweaks simpler.
+The Data & Backup settings include a versioned bookmark-only backup and a full backup. Bookmark-only backups preserve folder paths and manual order. Full backups also include extension local data and settings; the selected browser folder is kept local to the current browser profile. Older JSON exports containing a plain list of columns remain importable.
 
-*Tests*: A lightweight test script lives under `tests/utils.test.js`. It exercises several helpers and can be run with Node:
+Import always shows a preview before applying a merge. A matching URL in the same destination folder has its title updated; the same URL elsewhere is copied into the imported location so existing placements are preserved. If the merge fails partway through, the dialog reports that earlier changes may already have been saved.
+
+Manual sorting follows the browser bookmark order and enables drag-and-drop. Other sort modes disable dragging so displayed positions cannot be confused with the saved bookmark order. If the usual bookmarks toolbar cannot be identified, the extension asks you to select an existing browser bookmark folder; it does not move or modify that folder's current contents.
+
+## Tests
+
+Run the utility, bookmark-import, and duplicate-URL reorder tests from this directory with Node:
 
 ```bash
 node tests/utils.test.js
+node tests/bookmark-import.test.js
+node tests/bookmark-actions.test.js
+node tests/render.test.js
 ```
 
-It will print `utils tests passed` if everything is working correctly.
-
+The tests print a `... tests passed` message for each successful test file.

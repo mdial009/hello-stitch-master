@@ -1,3 +1,9 @@
 {
-    "CodeGPT.apiKey": "Ollama"
+    "CodeGPT.apiKey": "Ollama",
+    "chat.tools.terminal.autoApprove": {
+        "/^node tests/utils\\.test\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

@@ -10,6 +10,33 @@ const TAGS_KEY = "bookmarkTags";
 const FONT_SIZE_KEY = "selectedFontSize";
 const SEARCH_HISTORY_KEY = "searchHistory";
 const USAGE_PATTERNS_KEY = "usagePatterns";
+const ARCHIVED_FOLDERS_KEY = "archivedFolders";
+
+function getArchivedFolders() {
+  try {
+    return JSON.parse(localStorage.getItem(ARCHIVED_FOLDERS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveArchivedFolders(folders) {
+  try {
+    localStorage.setItem(ARCHIVED_FOLDERS_KEY, JSON.stringify(folders));
+  } catch (e) {}
+}
+
+function isFolderArchived(folderName) {
+  return getArchivedFolders().indexOf(folderName) !== -1;
+}
+
+function toggleFolderArchive(folderName) {
+  const folders = getArchivedFolders();
+  const idx = folders.indexOf(folderName);
+  if (idx === -1) folders.push(folderName);
+  else folders.splice(idx, 1);
+  saveArchivedFolders(folders);
+}
 
 // Initialize search history and usage patterns if not exist
 if (!localStorage.getItem(SEARCH_HISTORY_KEY)) {
@@ -465,7 +492,7 @@ chrome.bookmarks.getTree((items) => {
 
   // Separate root bookmarks (bookmarks at root level) from folders
   const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
-  const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+  const rootFolders = bookmarksBar.children.filter((node) => !!node.children && !isFolderArchived(node.title));
 
   // Create root column with title "/" for root-level bookmarks
   const rootColumn = {
@@ -527,7 +554,7 @@ function refreshBookmarks() {
 
     // Separate root bookmarks (bookmarks at root level) from folders
     const rootBookmarks = bookmarksBar.children.filter((node) => !node.children);
-    const rootFolders = bookmarksBar.children.filter((node) => !!node.children);
+    const rootFolders = bookmarksBar.children.filter((node) => !!node.children && !isFolderArchived(node.title));
 
     // Create root column with title "/" for root-level bookmarks
     const rootColumn = {
@@ -892,13 +919,19 @@ document.addEventListener("DOMContentLoaded", function() {
         applyFont(selectedFont.value);
       }
 
-      // Save font size
-      const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
-      if (selectedFontSize) {
-        applyFontSize(selectedFontSize.value);
-      }
-      
-      // Save sort preference
+       // Save font size
+       const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
+       if (selectedFontSize) {
+         applyFontSize(selectedFontSize.value);
+       }
+
+       // Save animations preference
+       const selectedAnimations = document.querySelector('input[name="animations"]:checked');
+       if (selectedAnimations) {
+         applyAnimations(selectedAnimations.value === "enabled");
+       }
+
+       // Save sort preference
       const sortPref = settingsSortSelect.value;
       localStorage.setItem(SORT_PREFERENCE_KEY, sortPref);
       updateSortButton();
@@ -2297,6 +2330,50 @@ window.addEventListener('unload', function() {
   }
 });
 
+function renderArchivedFoldersList() {
+  const container = document.getElementById("archived-folders-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const allFolders = [];
+  columns.forEach(function(col) {
+    if (col.title && col.title !== "/") {
+      allFolders.push(col.title);
+    }
+  });
+
+  const archived = getArchivedFolders();
+
+  if (!allFolders.length) {
+    container.innerHTML = '<p class="settings-hint">No folders found.</p>';
+    return;
+  }
+
+  allFolders.forEach(function(folderName) {
+    const item = document.createElement("div");
+    item.className = "settings-archived-item";
+
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = archived.indexOf(folderName) === -1;
+
+    const text = document.createTextNode(folderName);
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+
+    checkbox.addEventListener("change", function() {
+      toggleFolderArchive(folderName);
+      refreshBookmarks();
+    });
+
+    item.appendChild(label);
+    container.appendChild(item);
+  });
+}
+
 // ===========================================
 // SETTINGS MODAL FUNCTIONALITY
 // ===========================================
@@ -2305,6 +2382,8 @@ function initSettingsModal() {
   const settingsButton = document.getElementById("settings-button");
   const settingsClose = document.getElementById("settings-close");
   const settingsSave = document.getElementById("settings-save");
+  const settingsRestoreDefaults = document.getElementById("settings-restore-defaults");
+  const settingsUnsavedIndicator = document.getElementById("settings-unsaved-indicator");
   const settingsTitleInput = document.getElementById("settings-title-input");
   const themeRadios = document.querySelectorAll('input[name="theme"]');
   const fontRadios = document.querySelectorAll('input[name="font"]');
@@ -2312,15 +2391,76 @@ function initSettingsModal() {
 
   if (!settingsModal || !settingsButton) return;
 
+  let settingsHasChanges = false;
+
+  function markSettingsChanged() {
+    settingsHasChanges = true;
+    if (settingsUnsavedIndicator) {
+      settingsUnsavedIndicator.classList.add("visible");
+    }
+  }
+
+  function clearSettingsChanges() {
+    settingsHasChanges = false;
+    if (settingsUnsavedIndicator) {
+      settingsUnsavedIndicator.classList.remove("visible");
+    }
+  }
+
+  // Track changes on all settings inputs
+  const settingsInputs = settingsModal.querySelectorAll('input, select');
+  settingsInputs.forEach(function(input) {
+    input.addEventListener("change", markSettingsChanged);
+    input.addEventListener("input", markSettingsChanged);
+  });
+
   // Open modal
   settingsButton.addEventListener("click", function() {
     loadSettingsValues();
+    renderArchivedFoldersList();
+    clearSettingsChanges();
     settingsModal.classList.add("active");
   });
+
+  // Tab switching
+  const tabButtons = document.querySelectorAll(".settings-tab");
+  const tabPanels = document.querySelectorAll(".settings-tab-panel");
+  if (tabButtons.length && tabPanels.length) {
+    tabButtons.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const tabName = this.getAttribute("data-tab");
+        tabButtons.forEach(function(b) { b.classList.remove("active"); });
+        tabPanels.forEach(function(panel) { panel.classList.remove("active"); });
+        this.classList.add("active");
+        const targetPanel = document.querySelector('.settings-tab-panel[data-tab-panel="' + tabName + '"]');
+        if (targetPanel) targetPanel.classList.add("active");
+      });
+    });
+  }
+
+  // Theme search filter
+  const themeSearchInput = document.getElementById("theme-search-input");
+  if (themeSearchInput) {
+    const themeGrid = themeSearchInput.closest('.settings-section').querySelector('.settings-grid');
+    if (themeGrid) {
+      themeSearchInput.addEventListener("input", function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const themeOptions = themeGrid.querySelectorAll('.settings-option');
+        themeOptions.forEach(function(option) {
+          const label = option.querySelector('span');
+          if (label) {
+            const themeName = label.textContent.toLowerCase();
+            option.style.display = themeName.includes(searchTerm) ? '' : 'none';
+          }
+        });
+      });
+    }
+  }
 
   // Close modal
   if (settingsClose) {
     settingsClose.addEventListener("click", function() {
+      clearSettingsChanges();
       settingsModal.classList.remove("active");
     });
   }
@@ -2328,6 +2468,7 @@ function initSettingsModal() {
   // Close on backdrop click
   settingsModal.addEventListener("click", function(e) {
     if (e.target === settingsModal) {
+      clearSettingsChanges();
       settingsModal.classList.remove("active");
     }
   });
@@ -2335,9 +2476,44 @@ function initSettingsModal() {
   // Close on Escape key
   document.addEventListener("keydown", function(e) {
     if (e.key === "Escape" && settingsModal.classList.contains("active")) {
+      clearSettingsChanges();
       settingsModal.classList.remove("active");
     }
   });
+
+  // Restore Defaults button handler
+  if (settingsRestoreDefaults) {
+    settingsRestoreDefaults.addEventListener("click", function() {
+      if (!confirm("Reset all settings to defaults? This cannot be undone.")) return;
+
+      localStorage.removeItem("customTitle");
+      localStorage.setItem("selectedTheme", "default");
+      localStorage.setItem("selectedFont", "poppins");
+       localStorage.setItem("selectedFontSize", "20");
+       localStorage.setItem("bookmarkSortPreference", "frequency");
+       localStorage.setItem(ANIMATIONS_KEY, "true");
+
+       applyTheme("default");
+       applyFont("poppins");
+       applyFontSize("20");
+       applyAnimations(true);
+
+       if (themeRadios.length) themeRadios.forEach(function(r) { r.checked = r.value === "default"; });
+       if (fontRadios.length) fontRadios.forEach(function(r) { r.checked = r.value === "poppins"; });
+       const fontSizeRadios = document.querySelectorAll('input[name="fontSize"]');
+       if (fontSizeRadios.length) fontSizeRadios.forEach(function(r) { r.checked = r.value === "20"; });
+       const animationsRadios = document.querySelectorAll('input[name="animations"]');
+       if (animationsRadios.length) animationsRadios.forEach(function(r) { r.checked = r.value === "enabled"; });
+       if (sortSelect) sortSelect.value = "frequency";
+
+      if (settingsTitleInput) settingsTitleInput.value = "Hello, Stitch";
+
+      renderTitle("Hello, Stitch");
+      updateSortButton();
+      clearSettingsChanges();
+      renderCurrent();
+     });
+  }
 
 // Save button handler
   if (settingsSave) {
@@ -2381,22 +2557,20 @@ function initSettingsModal() {
       }
 
       // Save theme
-      const selectedTheme = document.querySelector('input[name="theme"]:checked');
-      if (selectedTheme) {
-        applyTheme(selectedTheme.value);
-        // Also update the header dropdown
-        const headerThemeSelect = document.getElementById("theme-select");
-        if (headerThemeSelect) headerThemeSelect.value = selectedTheme.value;
-      }
+       const selectedTheme = document.querySelector('input[name="theme"]:checked');
+       if (selectedTheme) {
+         applyTheme(selectedTheme.value);
+         const headerThemeSelect = document.getElementById("settings-theme-select");
+         if (headerThemeSelect) headerThemeSelect.value = selectedTheme.value;
+       }
 
       // Save font
-      const selectedFont = document.querySelector('input[name="font"]:checked');
-      if (selectedFont) {
-        applyFont(selectedFont.value);
-        // Also update the header dropdown
-        const headerFontSelect = document.getElementById("font-select");
-        if (headerFontSelect) headerFontSelect.value = selectedFont.value;
-      }
+       const selectedFont = document.querySelector('input[name="font"]:checked');
+       if (selectedFont) {
+         applyFont(selectedFont.value);
+         const headerFontSelect = document.getElementById("settings-font-select");
+         if (headerFontSelect) headerFontSelect.value = selectedFont.value;
+       }
 
       // Save font size
       const selectedFontSize = document.querySelector('input[name="fontSize"]:checked');
@@ -2414,8 +2588,9 @@ function initSettingsModal() {
       }
 
       // Close the modal
+      clearSettingsChanges();
       settingsModal.classList.remove("active");
-    });
+     });
   }
 
   // Theme radio buttons - live preview (apply immediately but don't save until Save is clicked)
@@ -2423,6 +2598,8 @@ function initSettingsModal() {
     radio.addEventListener("change", function() {
       if (this.checked) {
         applyTheme(this.value);
+        const headerThemeSelect = document.getElementById("settings-theme-select");
+        if (headerThemeSelect) headerThemeSelect.value = this.value;
       }
     });
   });
@@ -2432,6 +2609,8 @@ function initSettingsModal() {
     radio.addEventListener("change", function() {
       if (this.checked) {
         applyFont(this.value);
+        const headerFontSelect = document.getElementById("settings-font-select");
+        if (headerFontSelect) headerFontSelect.value = this.value;
       }
     });
   });
@@ -2446,12 +2625,22 @@ function initSettingsModal() {
     });
   });
 
-  // Sort select - live preview (apply immediately but don't save until Save is clicked)
-  if (sortSelect) {
-    sortSelect.addEventListener("change", function() {
-      setSortPreference(this.value);
-    });
-  }
+   // Sort select - live preview (apply immediately but don't save until Save is clicked)
+   if (sortSelect) {
+     sortSelect.addEventListener("change", function() {
+       setSortPreference(this.value);
+     });
+   }
+
+   // Animations radio buttons - live preview
+   const animationsRadios = document.querySelectorAll('input[name="animations"]');
+   animationsRadios.forEach(function(radio) {
+     radio.addEventListener("change", function() {
+       if (this.checked) {
+         applyAnimations(this.value === "enabled");
+       }
+     });
+   });
 }
 
 function loadSettingsValues() {
@@ -2482,12 +2671,19 @@ function loadSettingsValues() {
   const fontSizeRadio = document.querySelector('input[name="fontSize"][value="' + savedFontSize + '"]');
   if (fontSizeRadio) fontSizeRadio.checked = true;
 
-  // Load sort preference
-  const sortSelect = document.getElementById("settings-sort-select");
-  if (sortSelect) {
-    const savedSort = localStorage.getItem(SORT_KEY) || "frequency";
-    sortSelect.value = savedSort;
-  }
+   // Load sort preference
+   const sortSelect = document.getElementById("settings-sort-select");
+   if (sortSelect) {
+      const savedSort = localStorage.getItem(SORT_KEY) || "frequency";
+      sortSelect.value = savedSort;
+   }
+
+   // Load animations preference
+   const animationsRadios = document.querySelectorAll('input[name="animations"]');
+   const savedAnimations = loadAnimations();
+   animationsRadios.forEach(function(radio) {
+      radio.checked = radio.value === (savedAnimations ? "enabled" : "disabled");
+   });
 }
 
 // ============================================
@@ -2502,18 +2698,10 @@ function applyTheme(themeName) {
 }
 
 function applyFont(fontName) {
-  document.body.classList.remove(
-    "font-buka-bird",
-    "font-fredoka",
-    "font-poppins",
-    "font-roboto",
-    "font-open-sans",
-    "font-lato",
-    "font-montserrat",
-    "font-raleway",
-    "font-nunito",
-    "font-playfair"
-  );
+  const fontClasses = Array.from(document.body.classList).filter(function(cls) {
+    return cls.indexOf("font-") === 0 && cls !== "font-size";
+  });
+  document.body.classList.remove.apply(document.body.classList, fontClasses);
   if (fontName && fontName !== "buka-bird") {
     document.body.classList.add("font-" + fontName);
   }
@@ -2527,6 +2715,9 @@ document.addEventListener("DOMContentLoaded", function() {
   // Load saved font size
   const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "20";
   applyFontSize(savedFontSize);
+  
+  // Load saved animations setting
+  applyAnimations(loadAnimations());
   
   // Add event listeners for random buttons
   const randomThemeBtn = document.getElementById("random-theme-button");
@@ -2543,11 +2734,83 @@ document.addEventListener("DOMContentLoaded", function() {
   if (randomFontSizeBtn) {
     randomFontSizeBtn.addEventListener("click", randomizeFontSize);
   }
+  
+  const collapseAllBtn = document.getElementById("settings-collapse-all-button");
+  if (collapseAllBtn) {
+    collapseAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.add("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.add("collapsed");
+        if (ul) ul.style.display = "none";
+      });
+    });
+  }
+
+  const expandAllBtn = document.getElementById("settings-expand-all-button");
+  if (expandAllBtn) {
+    expandAllBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+    });
+  }
+
+  const resetLayoutBtn = document.getElementById("settings-reset-layout-button");
+  if (resetLayoutBtn) {
+    resetLayoutBtn.addEventListener("click", function() {
+      document.querySelectorAll(".dynamic-column").forEach(function(col) {
+        col.classList.remove("collapsed");
+        const btn = col.querySelector(".collapse-toggle");
+        const ul = col.querySelector("ul");
+        if (btn) btn.classList.remove("collapsed");
+        if (ul) ul.style.display = "";
+      });
+      renderCurrent();
+    });
+  }
+
+  const compactModeBtn = document.getElementById("settings-compact-mode-button");
+  if (compactModeBtn) {
+    compactModeBtn.addEventListener("click", function() {
+      document.body.classList.toggle("compact-mode");
+      const isCompact = document.body.classList.contains("compact-mode");
+      if (isCompact) {
+        compactModeBtn.classList.add("active");
+      } else {
+        compactModeBtn.classList.remove("active");
+      }
+    });
+  }
+
+  const analyticsBtn = document.getElementById("settings-analytics-button");
+  if (analyticsBtn) {
+    analyticsBtn.addEventListener("click", function() {
+      const modal = document.getElementById("analytics-modal");
+      if (modal) {
+        modal.classList.add("active");
+      }
+    });
+  }
+
+  const reloadBtn = document.getElementById("settings-reload-button");
+  if (reloadBtn) {
+    reloadBtn.addEventListener("click", function() {
+      if (typeof refreshBookmarks === "function") {
+        refreshBookmarks();
+      }
+    });
+  }
 });
 
 // Randomize Theme Function
 function randomizeTheme() {
-  const themes = ["default", "matrix", "ocean", "sunset", "forest", "midnight", "aurora", "rose", "lemon", "coral", "lavender", "nord", "dracula", "monokai", "cyberpunk"];
+  const themes = ["default", "matrix", "ocean", "sunset", "forest", "midnight", "aurora", "rose", "lemon", "coral", "lavender", "nord", "dracula", "monokai", "cyberpunk", "amber", "teal", "indigo", "emerald", "ruby", "sapphire", "amethyst", "copper", "jade", "crimson", "slate", "mint", "tangerine", "violet", "sky", "persimmon", "graphite", "neon-green", "hot-pink", "arctic", "sunflower", "magenta", "steel", "peach", "electric", "moss", "plum", "rust", "cloud", "neon-blue", "butter", "scarlet", "honey", "phantom", "barbie", "blizzard", "toxic", "frost", "garnet", "royal", "pistachio"];
   const randomIndex = Math.floor(Math.random() * themes.length);
   const randomTheme = themes[randomIndex];
   
@@ -2559,11 +2822,14 @@ function randomizeTheme() {
   if (themeRadio) {
     themeRadio.checked = true;
   }
+  // Sync the Layout dropdown
+  const themeSelect = document.getElementById("settings-theme-select");
+  if (themeSelect) themeSelect.value = randomTheme;
 }
 
 // Randomize Font Function
 function randomizeFont() {
-  const fonts = ["buka-bird", "fredoka", "poppins", "roboto", "open-sans", "lato", "montserrat", "raleway", "nunito", "playfair"];
+  const fonts = ["buka-bird", "fredoka", "poppins", "roboto", "open-sans", "lato", "montserrat", "raleway", "nunito", "playfair", "oswald", "ubuntu", "josefin-sans", "josefin-slab", "merriweather", "quicksand", "comfortaa", "cabin", "karla", "lobster", "bangers", "indie-flower", "caveat", "amatic-sc", "anton", "maven-pro", "ptsans", "ptsans-narrow", "ptsans-caption", "serif", "oxygen", "inconsolata", "noto-sans", "noto-serif", "varela", "varela-round", "exo", "exo-2", "fjalla-one", "orbitron", "rajdhani", "teko", "fira-sans", "fira-mono", "audiowide", "boogaloo", "press-start-2p", "titan-one", "syncopate"];
   const randomIndex = Math.floor(Math.random() * fonts.length);
   const randomFont = fonts[randomIndex];
   
@@ -2575,6 +2841,9 @@ function randomizeFont() {
   if (fontRadio) {
     fontRadio.checked = true;
   }
+  // Sync the Layout dropdown
+  const fontSelect = document.getElementById("settings-font-select");
+  if (fontSelect) fontSelect.value = randomFont;
 }
 
 // ============================================
@@ -2589,6 +2858,24 @@ function applyFontSize(fontSize) {
     document.body.classList.add("font-size-" + fontSize);
   }
   localStorage.setItem(FONT_SIZE_KEY, fontSize || "20");
+}
+
+// ============================================
+// ANIMATIONS FUNCTIONS
+// ============================================
+const ANIMATIONS_KEY = "animationsEnabled";
+
+function applyAnimations(enabled) {
+  if (enabled) {
+    document.body.classList.remove("no-animations");
+  } else {
+    document.body.classList.add("no-animations");
+  }
+  localStorage.setItem(ANIMATIONS_KEY, enabled ? "true" : "false");
+}
+
+function loadAnimations() {
+  return localStorage.getItem(ANIMATIONS_KEY) !== "false";
 }
 
 // Randomize Font Size Function

@@ -35,7 +35,8 @@ function render(columns) {
       flattenedColumns.push({
         title: col.title,
         children: rootBookmarks,
-        isSubfolder: false
+        isSubfolder: false,
+        folderId: col.folderId || rootBookmarks[0]?.parentId
       });
     }
 
@@ -50,7 +51,8 @@ function render(columns) {
         displayTitle: folderName,
         children: subfolderGroups[pathKey],
         isSubfolder: true,
-        parentTitle: col.title
+        parentTitle: col.title,
+        folderId: subfolderGroups[pathKey][0]?.parentId
       });
     });
   });
@@ -60,6 +62,7 @@ function render(columns) {
     const columnDiv = document.createElement("div");
     columnDiv.className = "dynamic-column";
     columnDiv.setAttribute("data-column-title", col.title);
+    if (col.folderId) columnDiv.setAttribute("data-folder-id", col.folderId);
 
     const summary = document.createElement("div");
     summary.className = "column-summary";
@@ -107,13 +110,19 @@ function render(columns) {
       col.children.forEach(function(bm) {
       const li = document.createElement("li");
       li.className = "bookmark-item";
+      li.setAttribute("data-url", bm.url);
+      if (bm.id) li.setAttribute("data-bookmark-id", bm.id);
+      if (bm.parentId) li.setAttribute("data-bookmark-parent-id", bm.parentId);
+      if (Number.isInteger(bm.index)) li.setAttribute("data-bookmark-index", bm.index);
       if (bm.isDuplicate) li.classList.add("duplicate");
       if (typeof isBrokenLink === "function" && isBrokenLink(bm.url)) li.classList.add("broken");
 
         // Create favicon image
         const favicon = document.createElement("img");
         favicon.className = "favicon";
-        favicon.src = bm.faviconUrl || getFaviconUrl(bm.url);
+        const faviconUrl = bm.faviconUrl || getFaviconUrl(bm.url);
+        if (faviconUrl) favicon.src = faviconUrl;
+        else favicon.style.display = "none";
         favicon.alt = "";
         favicon.onerror = function() {
           this.style.display = "none";
@@ -142,17 +151,19 @@ function render(columns) {
             link.appendChild(badge);
           }
         }
-        link.draggable = true;
+        link.draggable = localStorage.getItem("bookmarkSortPreference") === "manual";
         link.setAttribute("data-source", "render");
         
         // Drag event handlers for bookmark items
         link.addEventListener("dragstart", function(e) {
           e.stopPropagation();
           const url = this.getAttribute("data-url");
+          const bookmarkId = this.closest("li.bookmark-item")?.getAttribute("data-bookmark-id");
           const bm = this.closest("li.bookmark-item");
           if (url && bm) {
             // Store the bookmark URL and element for drag operations
             e.dataTransfer.setData("text/plain", url);
+            if (bookmarkId) e.dataTransfer.setData("application/x-hello-stitch-bookmark-id", bookmarkId);
             e.dataTransfer.effectAllowed = "move";
             // Add dragging class for visual feedback
             this.classList.add("dragging");
@@ -261,6 +272,7 @@ function render(columns) {
         // Edit button
         const editBtn = document.createElement("button");
         editBtn.className = "edit-bookmark-btn";
+        editBtn.setAttribute("data-bookmark-id", bm.id || "");
         editBtn.setAttribute("data-url", bm.url);
         editBtn.setAttribute("data-title", bm.title);
         editBtn.setAttribute("data-tooltip", "Edit bookmark");
@@ -270,6 +282,7 @@ function render(columns) {
         // Delete button
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "delete-bookmark-btn";
+        deleteBtn.setAttribute("data-bookmark-id", bm.id || "");
         deleteBtn.setAttribute("data-url", bm.url);
         deleteBtn.setAttribute("data-tooltip", "Delete bookmark");
         deleteBtn.textContent = "✕";
@@ -298,8 +311,12 @@ function render(columns) {
         checkbox.type = "checkbox";
         checkbox.className = "bookmark-checkbox";
         checkbox.setAttribute("data-url", bm.url);
+        checkbox.setAttribute("data-bookmark-id", bm.id || "");
         checkbox.setAttribute("data-title", bm.title);
         checkbox.setAttribute("data-tooltip", "Select for bulk actions");
+        const selectionKey = bm.id ? String(bm.id) : bm.url;
+        checkbox.checked = window.selectedBookmarks.has(selectionKey);
+        if (checkbox.checked) li.classList.add("selected");
         
         // Add change event listener directly to checkbox for reliable multi-select
         checkbox.addEventListener("change", function(e) {
@@ -308,12 +325,13 @@ function render(columns) {
           
           // Access selectedBookmarks from window object (defined in script.js)
           const bookmarksSet = window.selectedBookmarks;
+          const key = this.getAttribute("data-bookmark-id") || url;
           
           if (this.checked) {
-            bookmarksSet.add(url);
+            bookmarksSet.add(key);
             this.closest(".bookmark-item").classList.add("selected");
           } else {
-            bookmarksSet.delete(url);
+            bookmarksSet.delete(key);
             this.closest(".bookmark-item").classList.remove("selected");
           }
           if (typeof window.updateMultiSelectBar === "function") {
@@ -376,6 +394,7 @@ function render(columns) {
 
   // Update container class based on number of columns
   updateContainerClass();
+  setupDragAndDrop();
 }
 
 function updateContainerClass() {
@@ -401,7 +420,10 @@ function performBookmarkMove(columns, draggedBookmark, targetItem) {
   let srcColIndex = -1, srcCol = null, srcIdx = -1;
   columns.forEach((col, colIndex) => {
     col.children.forEach((bm, idx) => {
-      if (bm.url === draggedBookmark.url) {
+      const matchesSource = draggedBookmark.id
+        ? String(bm.id) === String(draggedBookmark.id)
+        : bm.url === draggedBookmark.url;
+      if (matchesSource) {
         srcColIndex = colIndex;
         srcCol = col;
         srcIdx = idx;
@@ -413,9 +435,13 @@ function performBookmarkMove(columns, draggedBookmark, targetItem) {
   
   // Find the target column and index
   let dstColIndex = -1, dstCol = null, dstIdx = -1;
+  const targetBookmarkId = targetItem.getAttribute("data-bookmark-id");
   columns.forEach((col, colIndex) => {
     col.children.forEach((bm, idx) => {
-      if (bm.url === targetItem.getAttribute("data-url")) {
+      const matchesTarget = targetBookmarkId
+        ? String(bm.id) === targetBookmarkId
+        : bm.url === targetItem.getAttribute("data-url");
+      if (matchesTarget) {
         dstColIndex = colIndex;
         dstCol = col;
         dstIdx = idx;
@@ -424,6 +450,7 @@ function performBookmarkMove(columns, draggedBookmark, targetItem) {
   });
   
   if (!dstCol || dstIdx === -1) return result;
+  if (srcCol === dstCol && srcIdx === dstIdx) return result;
   
   // Perform the move
   const [movedBookmark] = srcCol.children.splice(srcIdx, 1);
@@ -472,9 +499,9 @@ function performColumnMove(columns, draggedUrl, targetColumn) {
 
 function setupDragAndDrop() {
   const container = document.getElementById("container");
-  if (!container) return;
-  
-  // Set up dragover and drop event handlers for the container
+  if (!container || container.dataset.dragDropSetup === "true") return;
+  container.dataset.dragDropSetup = "true";
+
   container.addEventListener("dragover", function(e) {
     e.preventDefault();
     const target = e.target.closest("li.bookmark-item, .dynamic-column");
@@ -495,192 +522,85 @@ function setupDragAndDrop() {
     e.preventDefault();
     const target = e.target.closest("li.bookmark-item, .dynamic-column");
     if (!target) return;
-    
+
+    const draggedBookmarkId = e.dataTransfer.getData("application/x-hello-stitch-bookmark-id");
     const draggedUrl = e.dataTransfer.getData("text/plain");
-    if (!draggedUrl) return;
-    
-    // Remove visual highlights
+    if (!draggedBookmarkId && !draggedUrl) return;
+
     document.querySelectorAll(".drag-over").forEach(el => {
       el.classList.remove("drag-over");
     });
-    
-    // Check if we dropped on a bookmark item or a column
+
+    const sourceBookmark = columns.flatMap((column) => column.children)
+      .find((bookmark) => draggedBookmarkId
+        ? String(bookmark.id) === draggedBookmarkId
+        : bookmark.url === draggedUrl);
+    if (!sourceBookmark) return;
+
+    let destinationParentId;
+    let destinationIndex;
     if (target.classList.contains("bookmark-item")) {
-      // Handle bookmark-to-bookmark or bookmark-to-column drop
-      const draggedUrl = target.getAttribute("data-url");
-      if (!draggedUrl) return;
-      
-      // Find the dragged bookmark object
-      let draggedBookmark = null;
-      columns.forEach(col => {
-        col.children.forEach(bm => {
-          if (bm.url === draggedUrl) {
-            draggedBookmark = bm;
-          }
-        });
-      });
-      
-      if (!draggedBookmark) return;
-      
-      const containerColumns = columns || window.columns;
-      const result = performBookmarkMove(containerColumns, draggedBookmark, target);
-      if (result.moved) {
-        render(result.columns);
-      }
-    } else if (target.classList.contains("dynamic-column")) {
-      // Handle bookmark-to-column drop (dragging a bookmark onto a column)
-      const draggedUrl = e.dataTransfer.getData("text/plain");
-      if (!draggedUrl) return;
-      
-      const containerColumns = columns || window.columns;
-      const result = performColumnMove(containerColumns, draggedUrl, target);
-      if (result.moved) {
-        render(result.columns);
-      }
+      const targetBookmarkId = target.getAttribute("data-bookmark-id");
+      if (targetBookmarkId === draggedBookmarkId) return;
+      destinationParentId = target.getAttribute("data-bookmark-parent-id");
+      const targetIndex = target.getAttribute("data-bookmark-index");
+      if (targetIndex !== null) destinationIndex = Number(targetIndex);
+    } else {
+      destinationParentId = target.getAttribute("data-folder-id");
     }
+    if (!destinationParentId) return;
+
+    if (draggedBookmarkId && typeof window.moveBookmarkInBrowser === "function") {
+      window.moveBookmarkInBrowser(
+        draggedBookmarkId,
+        destinationParentId,
+        Number.isInteger(destinationIndex) ? destinationIndex : undefined,
+        sourceBookmark.parentId,
+        sourceBookmark.index
+      );
+      return;
+    }
+
+    const result = target.classList.contains("bookmark-item")
+      ? performBookmarkMove(columns, sourceBookmark, target)
+      : performColumnMove(columns, draggedUrl, target);
+    if (result.moved) render(result.columns);
+  });
+
+  container.addEventListener("dragend", function() {
+    document.querySelectorAll(".drag-over").forEach((element) => {
+      element.classList.remove("drag-over");
+    });
   });
 }
 
 function updateHeaderDropdown() {
   const dropdown = document.getElementById("bookmark-filter-dropdown");
   if (!dropdown) return;
-  
-  // Refresh the dropdown with updated columns
+
   dropdown.innerHTML = "";
-  
+
   const containerColumns = columns || window.columns;
   if (!containerColumns || containerColumns.length === 0) return;
-  
-  // Create dropdown for each column
+
   containerColumns.forEach(col => {
-    if (col.title === "/") return; // Skip root column
-    
+    if (col.title === "/") return;
+
     const btn = document.createElement("button");
     btn.className = "filter-button";
     btn.textContent = col.title;
     btn.setAttribute("data-column-title", col.title);
     btn.title = "Filter by " + col.title;
-    
     btn.addEventListener("click", function() {
       filterByCategory(col.title.toLowerCase());
       updateCloseAllVisibility();
     });
-    
     dropdown.appendChild(btn);
   });
 }
-
-// Initialize drag-and-drop functionality
-document.addEventListener("DOMContentLoaded", function() {
-  // Set up drag-and-drop for bookmark items
-  document.querySelectorAll(".bookmark-link").forEach(function(link) {
-    link.draggable = true;
-    link.addEventListener("dragstart", function(e) {
-      e.stopPropagation();
-      const url = this.getAttribute("data-url");
-      if (url) {
-        e.dataTransfer.setData("text/plain", url);
-        e.dataTransfer.effectAllowed = "move";
-        this.classList.add("dragging");
-        this.closest(".bookmark-item").classList.add("dragging");
-      }
-    });
-    
-    link.addEventListener("dragend", function(e) {
-      e.stopPropagation();
-      this.classList.remove("dragging");
-      this.closest(".bookmark-item").classList.remove("dragging");
-      
-      // Remove any visual indicators
-      document.querySelectorAll(".drag-over").forEach(el => {
-        el.classList.remove("drag-over");
-      });
-    });
-  });
-  
-  // Set up drag-and-drop for the container
-  const container = document.getElementById("container");
-  if (container) {
-    container.addEventListener("dragover", function(e) {
-      e.preventDefault();
-      const target = e.target.closest("li.bookmark-item, .dynamic-column");
-      if (target) {
-        target.classList.add("drag-over");
-      }
-    });
-    
-    container.addEventListener("dragleave", function(e) {
-      const target = e.target.closest("li.bookmark-item, .dynamic-column");
-      if (target) {
-        target.classList.remove("drag-over");
-      }
-    });
-    
-    container.addEventListener("drop", function(e) {
-      e.preventDefault();
-      const target = e.target.closest("li.bookmark-item, .dynamic-column");
-      if (!target) return;
-      
-      const draggedUrl = e.dataTransfer.getData("text/plain");
-      if (!draggedUrl) return;
-      
-      // Remove visual highlights
-      document.querySelectorAll(".drag-over").forEach(el => {
-        el.classList.remove("drag-over");
-      });
-      
-      // Perform the drop operation
-      const containerColumns = columns || window.columns || [];
-      if (target.classList.contains("bookmark-item")) {
-        // Find the dragged bookmark
-        let draggedBookmark = null;
-        containerColumns.forEach(col => {
-          col.children.forEach(bm => {
-            if (bm.url === draggedUrl) {
-              draggedBookmark = bm;
-            }
-          });
-        });
-        
-        if (draggedBookmark) {
-          const result = performBookmarkMove(containerColumns, draggedBookmark, target);
-          if (result.moved) {
-            render(result.columns);
-          }
-        }
-      } else if (target.classList.contains("dynamic-column")) {
-        const result = performColumnMove(containerColumns, draggedUrl, target);
-        if (result.moved) {
-          render(result.columns);
-        }
-      }
-    });
-  }
-  
-  // Set up drag-and-drop for filter buttons
-  const filterButtons = document.querySelectorAll(".filter-button");
-  filterButtons.forEach(function(btn) {
-    btn.draggable = true;
-    btn.addEventListener("dragstart", function(e) {
-      e.stopPropagation();
-      const columnTitle = this.getAttribute("data-column-title");
-      if (columnTitle) {
-        e.dataTransfer.setData("text/plain", columnTitle);
-        e.dataTransfer.effectAllowed = "move";
-        this.classList.add("dragging");
-      }
-    });
-    
-    btn.addEventListener("dragend", function(e) {
-      e.stopPropagation();
-      this.classList.remove("dragging");
-    });
-  });
-});
 
 // Expose drag-and-drop functions globally
 window.performBookmarkMove = performBookmarkMove;
 window.performColumnMove = performColumnMove;
 window.setupDragAndDrop = setupDragAndDrop;
 window.updateHeaderDropdown = updateHeaderDropdown;
-

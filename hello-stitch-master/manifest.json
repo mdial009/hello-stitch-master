@@ -1,37 +1,32 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Hello Stitch",
-  "version": "0.16",
+  "version": "0.17",
   "description": "A bookmarks manager with customizable title and themes",
   "permissions": [
     "bookmarks",
     "history"
+  ],
+  "host_permissions": [
+    "https://fonts.googleapis.com/*",
+    "https://fonts.gstatic.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://www.google.com/*"
   ],
   "icons": {
     "16": "icons/web/icons8-stitch-color-16.png",
     "48": "icons/web/icons8-stitch-color-48.png",
     "144": "icons/web/icons8-stitch-color-144.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": {
       "16": "icons/web/icons8-stitch-color-16.png",
       "48": "icons/web/icons8-stitch-color-48.png",
       "144": "icons/web/icons8-stitch-color-144.png"
     }
   },
-  "background": {
-    "scripts": ["background.js"]
-  },
   "chrome_url_overrides": {
     "newtab": "index.html"
-  },
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "ext@xyz.stitch.hello-friend",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
-    }
-  },
-  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' 'sha256-sB2YVxvEwwnlb2Z51X3Hsuj7GKY58AupFhFmkzbASRk='; object-src 'self'"
+  }
 }

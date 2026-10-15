@@ -1,22 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script>
-    // Immediately set the browser tab title from localStorage to avoid flash of default title
-    (function() {
-      var customTitle = localStorage.getItem('customTitle') || 'Hello, Stitch';
-      var now = new Date();
-      var dayName = now.toLocaleDateString("en-US", { weekday: "long" });
-      var monthName = now.toLocaleDateString("en-US", { month: "long" });
-      var day = now.getDate();
-      var year = now.getFullYear();
-      var hours = now.getHours();
-      var minutes = now.getMinutes().toString().padStart(2, "0");
-      var ampm = hours >= 12 ? "PM" : "AM";
-      var hour12 = hours % 12 || 12;
-      document.title = customTitle + " today is " + dayName + " " + monthName + " " + day + ", " + year + " and the time is " + hour12 + ":" + minutes + " " + ampm;
-    })();
-  </script>
   <meta charset="utf-8" />
   <meta name="description" content="A beautiful bookmarks manager for Chrome and Firefox with customizable themes, work mode, and quick access to your favorite sites." />
   <title></title>
@@ -26,9 +10,11 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/web/icons8-stitch-color-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/web/icons8-stitch-color-180.png" />
   <link id="google-fonts-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" />
-  <script src="title-init.js" defer></script>
+  <script src="title-init.js"></script>
   <script src="options.js" defer></script>
   <script src="utils.js" defer></script>
+  <script src="bookmark-import.js" defer></script>
+  <script src="bookmark-actions.js" defer></script>
   <script src="script.js" defer></script>
   <script src="render.js" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,6 +25,14 @@
     <div class="spinner"></div>
     <span class="loading-text">Loading bookmarks...</span>
   </div>
+  <section id="missing-bookmark-root" class="extension-onboarding" hidden>
+    <h2>Choose a bookmark folder</h2>
+    <p>Hello, Stitch could not find the usual bookmarks toolbar. Choose a folder to use as its bookmark collection; your existing bookmarks will not be moved.</p>
+    <label for="bookmark-root-folder-select">Use this folder</label>
+    <select id="bookmark-root-folder-select"></select>
+    <button type="button" id="bookmark-root-folder-save" class="settings-button">Use Folder</button>
+    <p id="bookmark-root-folder-error" class="settings-error" aria-live="polite"></p>
+  </section>
   
   <!-- Bookmark Filter Dropdown Container - Fixed at Top Left -->
   <div id="bookmark-filter-dropdown" class="filter-buttons"></div>
@@ -79,23 +73,27 @@
       </div>
     </div>
     <div class="quick-links">
-      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><img class="quick-link-favicon" src="" alt="" data-url="https://chat.openai.com/" /></button>
-      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><img class="quick-link-favicon" src="" alt="" data-url="https://grok.com/" /></button>
-      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><img class="quick-link-favicon" src="" alt="" data-url="https://www.amazon.com/" /></button>
-      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><img class="quick-link-favicon" src="" alt="" data-url="https://gemini.google.com/" /></button>
-      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><img class="quick-link-favicon" src="" alt="" data-url="https://www.reddit.com/" /></button>
-      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><img class="quick-link-favicon" src="" alt="" data-url="https://www.twitch.tv/" /></button>
-      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><img class="quick-link-favicon" src="" alt="" data-url="https://www.youtube.com/" /></button>
-      <button class="search-button instagram-btn" id="instagram-button" data-tooltip="Open Instagram" aria-label="Open Instagram"><img class="quick-link-favicon" src="" alt="" data-url="https://www.instagram.com/" /></button>
-      <button class="search-button facebook-btn" id="facebook-button" data-tooltip="Open Facebook" aria-label="Open Facebook"><img class="quick-link-favicon" src="" alt="" data-url="https://www.facebook.com/" /></button>
+      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><img class="quick-link-favicon" alt="" data-url="https://chat.openai.com/" /></button>
+      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><img class="quick-link-favicon" alt="" data-url="https://grok.com/" /></button>
+      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><img class="quick-link-favicon" alt="" data-url="https://www.amazon.com/" /></button>
+      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><img class="quick-link-favicon" alt="" data-url="https://gemini.google.com/" /></button>
+      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><img class="quick-link-favicon" alt="" data-url="https://www.reddit.com/" /></button>
+      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><img class="quick-link-favicon" alt="" data-url="https://www.twitch.tv/" /></button>
+      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><img class="quick-link-favicon" alt="" data-url="https://www.youtube.com/" /></button>
+      <button class="search-button instagram-btn" id="instagram-button" data-tooltip="Open Instagram" aria-label="Open Instagram"><img class="quick-link-favicon" alt="" data-url="https://www.instagram.com/" /></button>
+      <button class="search-button facebook-btn" id="facebook-button" data-tooltip="Open Facebook" aria-label="Open Facebook"><img class="quick-link-favicon" alt="" data-url="https://www.facebook.com/" /></button>
+    </div>
+    <div class="bookmark-sort-controls" aria-label="Bookmark sorting">
+      <span>Sort:</span>
+      <button id="sort-frequency" class="small-button" data-tooltip="Sort by most visited">Most Visited</button>
+      <button id="sort-date" class="small-button" data-tooltip="Sort by date added">Date Added</button>
+      <button id="sort-alphabetical" class="small-button" data-tooltip="Sort A-Z">A-Z</button>
+      <button id="sort-manual" class="small-button" data-tooltip="Show browser order and enable drag-and-drop">Manual</button>
     </div>
     <div class="filter-buttons">
       <button id="close-all-btn" class="small-button" data-tooltip="Close all">Close All</button>
       <button id="clear-pins" class="small-button" data-tooltip="Clear pinned">Clear Pins</button>
       <button id="filter-work-mode" class="small-button" data-tooltip="Filter work mode">Work Mode</button>
-      <button id="sort-frequency" class="small-button" data-tooltip="Sort by most visited">Most Visited</button>
-      <button id="sort-date" class="small-button" data-tooltip="Sort by date added">Date Added</button>
-      <button id="sort-alphabetical" class="small-button" data-tooltip="Sort A-Z">A-Z</button>
     </div>
     <div class="import-export-buttons">
       <button id="settings-button" class="small-button" data-tooltip="Open settings">⚙️ Settings</button>
@@ -175,31 +173,17 @@
           <h2>⚙️ Settings</h2>
           <button id="settings-close" class="settings-close-btn" data-tooltip="Close settings">&times;</button>
         </div>
-        <div class="settings-tabs">
-          <button type="button" class="settings-tab active" data-tab="appearance">🎨 Appearance</button>
-          <button type="button" class="settings-tab" data-tab="layout">🖥️ Layout & Behavior</button>
-          <button type="button" class="settings-tab" data-tab="data">💾 Data & Backup</button>
+        <div class="settings-tabs" role="tablist" aria-label="Settings categories">
+          <button type="button" class="settings-tab active" id="settings-tab-appearance" role="tab" aria-selected="true" aria-controls="settings-panel-appearance" tabindex="0" data-tab="appearance">🎨 Appearance</button>
+          <button type="button" class="settings-tab" id="settings-tab-layout" role="tab" aria-selected="false" aria-controls="settings-panel-layout" tabindex="-1" data-tab="layout">🖥️ Layout & Behavior</button>
+          <button type="button" class="settings-tab" id="settings-tab-data" role="tab" aria-selected="false" aria-controls="settings-panel-data" tabindex="-1" data-tab="data">💾 Data & Backup</button>
         </div>
         <div class="settings-header-actions">
-          <span class="settings-header-label">Import/Export:</span>
-          <div class="settings-header-buttons">
-<button id="settings-export-button" class="small-settings-btn" title="Export Bookmarks" data-tooltip="Export Bookmarks">📤</button>
-            <button id="settings-import-button" class="small-settings-btn" title="Import Bookmarks" data-tooltip="Import Bookmarks">📥</button>
-            <input type="file" id="settings-import-file" accept=".json" style="display:none" />
-          </div>
-          <div class="settings-header-divider"></div>
           <button id="settings-info-button" class="small-settings-btn" title="Features" data-tooltip="View features">ℹ️</button>
-          <div class="settings-header-divider"></div>
-          <span class="settings-header-label">Sort:</span>
-          <select id="settings-sort-select" class="settings-header-sort" data-tooltip="Sort bookmarks by">
-            <option value="frequency">Most Visited</option>
-            <option value="date">Date Added</option>
-            <option value="alphabetical">A-Z</option>
-          </select>
         </div>
       </div>
       <div class="settings-content">
-        <div class="settings-tab-panel active" data-tab-panel="appearance">
+        <div class="settings-tab-panel active" id="settings-panel-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" data-tab-panel="appearance">
         
          <!-- Custom Title Section -->
         <div class="settings-section">
@@ -209,16 +193,33 @@
             <p class="settings-hint">Click on the title in the header to edit it directly.</p>
           </div>
         </div>
-        
-        <!-- Theme Selection -->
+
         <div class="settings-section">
-          <h3 class="settings-section-header">🎨 Theme <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <h3 class="settings-section-header">🔒 Favicon Privacy</h3>
           <div class="settings-section-body">
-            <div class="settings-grid">
+            <div class="settings-field">
+              <label for="remote-favicons-enabled"><input type="checkbox" id="remote-favicons-enabled" /> Enable remote favicon lookups</label>
+            </div>
+            <p class="settings-hint">When enabled, bookmark hostnames are sent to Google to fetch favicon images. This permission is optional and lookups are off by default.</p>
+            <p id="remote-favicons-status" class="settings-hint" aria-live="polite"></p>
+          </div>
+        </div>
+
+         <!-- Theme Selection -->
+         <div class="settings-section">
+           <h3 class="settings-section-header">🎨 Theme <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+           <div class="settings-section-body">
+             <input type="text" id="theme-search-input" class="settings-input" placeholder="Filter themes..." data-tooltip="Filter themes by name" />
+             <div class="settings-grid">
             <label class="settings-option">
               <input type="radio" name="theme" value="default" />
               <div class="theme-preview theme-preview-default"></div>
               <span>Default</span>
+            </label>
+            <label class="settings-option">
+              <input type="radio" name="theme" value="auto" />
+              <div class="theme-preview theme-preview-auto"></div>
+              <span>System Auto</span>
             </label>
             <label class="settings-option">
               <input type="radio" name="theme" value="matrix" />
@@ -794,9 +795,26 @@
           <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
           </div>
         </div>
+
+        <!-- Animations Toggle Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-header">🌀 Animations <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <div class="settings-section-body">
+            <div class="settings-grid">
+              <label class="settings-option">
+                <input type="radio" name="animations" value="enabled" />
+                <div class="animations-preview">✓ Enabled</div>
+                <span>Enabled</span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="animations" value="disabled" />
+                <div class="animations-preview">✗ Disabled</div>
+                <span>Disabled</span>
+              </label>
+            </div>
+            <p class="settings-hint">Enable or disable UI animations and transitions.</p>
+          </div>
         </div>
-        
-        <div class="settings-tab-panel" data-tab-panel="data">
         
         <div class="settings-section">
           <h3 class="settings-section-header">🔗 Custom Quick Links <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
@@ -819,65 +837,90 @@
         </div>
         </div>
         
-        <div class="settings-tab-panel" data-tab-panel="layout">
-        
-        <div class="settings-section">
-          <h3 class="settings-section-header">🖥️ Header Controls <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
-          <div class="settings-section-body">
-            <div class="settings-grid">
-              <div class="settings-field">
-                <label for="settings-theme-select">Theme</label>
-                <select id="settings-theme-select" class="settings-input" data-tooltip="Select theme">
-                  <option value="default">Default Theme</option>
-                </select>
-              </div>
-              <div class="settings-field">
-                <label for="settings-font-select">Font</label>
-                <select id="settings-font-select" class="settings-input" data-tooltip="Select font">
-                  <option value="poppins">Poppins</option>
-                </select>
-              </div>
-              <div class="settings-field">
-                <label for="settings-sort-select">Sort</label>
-                <select id="settings-sort-select" class="settings-input" data-tooltip="Sort bookmarks">
-                  <option value="frequency">Most Visited</option>
-                  <option value="date">Date Added</option>
-                  <option value="alphabetical">A-Z</option>
-                </select>
-              </div>
-            </div>
-            <p class="settings-hint">Choose the default theme, font, and sort order shown on the main page.</p>
-          </div>
-        </div>
+         <div class="settings-tab-panel" id="settings-panel-layout" role="tabpanel" aria-labelledby="settings-tab-layout" data-tab-panel="layout">
 
-        <div class="settings-section">
-          <h3 class="settings-section-header">⚡ Quick Actions <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
-          <div class="settings-section-body">
-            <div class="settings-grid">
-              <button type="button" id="settings-collapse-all-button" class="settings-button" data-tooltip="Collapse all folders">📁 Collapse All</button>
-              <button type="button" id="settings-expand-all-button" class="settings-button" data-tooltip="Expand all folders">📂 Expand All</button>
-              <button type="button" id="settings-reset-layout-button" class="settings-button" data-tooltip="Reset column layout">🔄 Reset Layout</button>
-              <button type="button" id="settings-compact-mode-button" class="settings-button" data-tooltip="Toggle compact mode">📦 Compact Mode</button>
+         <div class="settings-section">
+           <h3 class="settings-section-header">↕️ Bookmark Sorting <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+           <div class="settings-section-body">
+             <div class="settings-field">
+               <label for="settings-sort-select">Default bookmark order</label>
+               <select id="settings-sort-select" class="settings-header-sort" data-tooltip="Sort bookmarks by">
+                 <option value="frequency">Most Visited</option>
+                 <option value="date">Date Added</option>
+                 <option value="alphabetical">A-Z</option>
+                 <option value="manual">Manual (drag to reorder)</option>
+               </select>
+             </div>
+             <p class="settings-hint">Choose how bookmarks are ordered in each folder.</p>
+           </div>
+         </div>
+
+         <div class="settings-section">
+           <h3 class="settings-section-header">⚡ Quick Actions <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+           <div class="settings-section-body">
+             <div class="settings-grid">
+               <button type="button" id="settings-collapse-all-button" class="settings-button" data-tooltip="Collapse all folders">📁 Collapse All</button>
+               <button type="button" id="settings-expand-all-button" class="settings-button" data-tooltip="Expand all folders">📂 Expand All</button>
+               <button type="button" id="settings-reset-layout-button" class="settings-button" data-tooltip="Reset column layout">🔄 Reset Layout</button>
+               <button type="button" id="settings-compact-mode-button" class="settings-button" data-tooltip="Toggle compact mode">📦 Compact Mode</button>
               <button type="button" id="settings-analytics-button" class="settings-button" data-tooltip="View bookmark analytics">📊 Analytics</button>
+              <button type="button" id="settings-reload-button" class="settings-button" data-tooltip="Reload bookmarks from Chrome">🔄 Reload Bookmarks</button>
             </div>
-            <p class="settings-hint">Quick access to layout controls, analytics, and backup actions.</p>
-          </div>
-        </div>
+            <p class="settings-hint">Quick access to layout controls, analytics, and reload actions.</p>
+           </div>
+         </div>
 
-        <div class="settings-section">
-          <h3 class="settings-section-header">📦 Archived Folders <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
-          <div class="settings-section-body">
-            <div id="archived-folders-list" class="settings-archived-list"></div>
-            <p class="settings-hint">Archived folders are hidden from the main bookmark view but remain in Chrome. Re-check any folder here to restore it.</p>
-          </div>
-        </div>
-        </div>
+         <div class="settings-section">
+           <h3 class="settings-section-header">📦 Archived Folders <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+           <div class="settings-section-body">
+             <div id="archived-folders-list" class="settings-archived-list"></div>
+             <p class="settings-hint">Archived folders are hidden from the main bookmark view but remain in Chrome. Re-check any folder here to restore it.</p>
+           </div>
+         </div>
+         </div>
+         <div class="settings-tab-panel" id="settings-panel-data" role="tabpanel" aria-labelledby="settings-tab-data" data-tab-panel="data">
+           <div class="settings-section">
+             <h3 class="settings-section-header">📦 Import & Export</h3>
+             <div class="settings-section-body">
+               <p class="settings-hint">Export a backup of your bookmarks or import bookmarks from a JSON backup.</p>
+               <div class="settings-data-actions">
+                 <button type="button" id="settings-export-button" class="settings-button" data-tooltip="Export a versioned bookmark-only backup">📤 Export Bookmarks</button>
+                 <button type="button" id="settings-import-button" class="settings-button" data-tooltip="Preview and merge a bookmark backup">📥 Import Bookmarks</button>
+                 <button type="button" id="settings-export-full-button" class="settings-button" data-tooltip="Export bookmarks and extension settings">💾 Export Full Backup</button>
+                 <button type="button" id="settings-import-full-button" class="settings-button settings-button-secondary" data-tooltip="Preview and restore a full backup">♻️ Restore Full Backup</button>
+                 <input type="file" id="settings-import-file" accept=".json,application/json" hidden />
+               </div>
+               <p class="settings-hint">Bookmark-only backups include bookmarks and their folder order. Full backups also include this extension's saved settings and local data; the selected browser folder stays on this device.</p>
+             </div>
+           </div>
+         </div>
         
       </div>
-      <div class="settings-footer">
-        <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
-      </div>
+       <div class="settings-footer">
+          <button id="settings-restore-defaults" class="settings-button settings-button-secondary" data-tooltip="Reset all settings to defaults">↺ Restore Defaults</button>
+          <span id="settings-unsaved-indicator" class="settings-unsaved-indicator" data-tooltip="You have unsaved changes">● Unsaved Changes</span>
+          <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
+        </div>
     </div>
+  </div>
+
+  <div id="bookmark-import-preview-modal" class="extension-dialog-backdrop" aria-hidden="true">
+    <section class="extension-dialog" role="dialog" aria-modal="true" aria-labelledby="bookmark-import-preview-title">
+      <h2 id="bookmark-import-preview-title">Review bookmark import</h2>
+      <p id="bookmark-import-preview-summary"></p>
+      <ul id="bookmark-import-preview-counts"></ul>
+      <div id="bookmark-import-preview-items" class="import-preview-items"></div>
+      <label id="bookmark-import-settings-option" class="import-settings-option" hidden>
+        <input type="checkbox" id="bookmark-import-restore-settings" checked />
+        Restore saved extension settings too
+      </label>
+      <p class="settings-hint">Merge adds new bookmarks, updates titles for matching URLs in the same folder, and keeps duplicates in other folders.</p>
+      <p id="bookmark-import-preview-error" class="settings-error" aria-live="polite"></p>
+      <div class="modal-footer">
+        <button type="button" id="bookmark-import-cancel" class="settings-button settings-button-secondary">Cancel</button>
+        <button type="button" id="bookmark-import-confirm" class="settings-button">Merge Bookmarks</button>
+      </div>
+    </section>
   </div>
   
   <!-- Features Info Modal -->
