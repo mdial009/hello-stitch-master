@@ -26,4 +26,30 @@ assert.deepStrictEqual(
   ["second", "first", "third"]
 );
 
+const createNode = (type) => ({
+  type,
+  children: [],
+  textContent: "",
+  appendChild(child) {
+    this.children.push(child);
+  },
+});
+context.document = {
+  createTextNode(text) {
+    return { type: "text", textContent: text };
+  },
+  createElement(type) {
+    return createNode(type);
+  },
+};
+const highlightedTitle = createNode("span");
+highlightedTitle.replaceChildren = function() {
+  this.children = [];
+};
+context.setBookmarkTitleHighlight(highlightedTitle, "Café Example", "cafe");
+assert.deepStrictEqual(
+  highlightedTitle.children.map((node) => [node.type, node.textContent]),
+  [["mark", "Café"], ["text", " Example"]]
+);
+
 console.log("render tests passed");

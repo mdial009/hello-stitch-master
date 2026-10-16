@@ -339,6 +339,7 @@ function getAvailableTags() {
  * @param {string} tag - Tag to filter by
  */
 function filterByTag(tag) {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const normalizedTag = tag.toLowerCase();
@@ -781,6 +782,15 @@ function downloadBackup(data, filename) {
 
 let pendingBookmarkBackup = null;
 
+function updateBookmarkImportRestoreUi(isFullBackup) {
+  const restoreSettings = document.getElementById("bookmark-import-restore-settings");
+  const warning = document.getElementById("bookmark-import-restore-warning");
+  const confirmButton = document.getElementById("bookmark-import-confirm");
+  const shouldRestoreSettings = isFullBackup && restoreSettings.checked;
+  warning.hidden = !shouldRestoreSettings;
+  confirmButton.textContent = shouldRestoreSettings ? "Merge & Restore Settings" : "Merge Bookmarks";
+}
+
 async function previewImportFromJson(json, requireFullBackup = false) {
   try {
     if (!chrome.bookmarks) throw new Error("Bookmark access is unavailable.");
@@ -835,6 +845,7 @@ async function previewImportFromJson(json, requireFullBackup = false) {
     }
     settingsOption.hidden = !backup.isFullBackup;
     restoreSettings.checked = backup.isFullBackup;
+    updateBookmarkImportRestoreUi(backup.isFullBackup);
     error.textContent = "";
     dialog.classList.add("active");
     dialog.setAttribute("aria-hidden", "false");
@@ -893,6 +904,7 @@ function closeImportPreview() {
     dialog.classList.remove("active");
     dialog.setAttribute("aria-hidden", "true");
   }
+  updateBookmarkImportRestoreUi(false);
   pendingBookmarkBackup = null;
 }
 
@@ -950,6 +962,14 @@ function clearMultiSelect() {
   updateMultiSelectBar();
 }
 
+const openedBookmarkTabIds = new Set();
+const openedBookmarkWindows = new Set();
+if (window.chrome && chrome.tabs && chrome.tabs.onRemoved) {
+  chrome.tabs.onRemoved.addListener((tabId) => openedBookmarkTabIds.delete(tabId));
+} else if (window.browser && browser.tabs && browser.tabs.onRemoved) {
+  browser.tabs.onRemoved.addListener((tabId) => openedBookmarkTabIds.delete(tabId));
+}
+
 function openTabsSafely(urls) {
   if (!urls || urls.length === 0) {
     console.log('No URLs to open');
@@ -961,18 +981,82 @@ function openTabsSafely(urls) {
   if (window.chrome && chrome.tabs) {
     // Chrome extension context
     urls.forEach((url) => {
-      chrome.tabs.create({ url: url, active: false });
+      chrome.tabs.create({ url: url, active: false }, (tab) => {
+        const error = chrome.runtime && chrome.runtime.lastError;
+        if (error) {
+          console.error("Could not open bookmark tab:", error.message);
+          if (typeof showToast === "function") showToast(`Could not open bookmark tab: ${error.message}`, "error");
+          return;
+        }
+        if (tab && Number.isInteger(tab.id)) openedBookmarkTabIds.add(tab.id);
+      });
     });
   } else if (window.browser && browser.tabs) {
     // Firefox browser context
     urls.forEach((url) => {
-      browser.tabs.create({ url: url, active: false });
+      browser.tabs.create({ url: url, active: false })
+        .then((tab) => {
+          if (tab && Number.isInteger(tab.id)) openedBookmarkTabIds.add(tab.id);
+        })
+        .catch((error) => {
+          console.error("Could not open bookmark tab:", error);
+          if (typeof showToast === "function") showToast(`Could not open bookmark tab: ${error.message}`, "error");
+        });
     });
   } else {
     // Fallback for web context
     urls.forEach((url) => {
-      window.open(url, "_blank");
+      const openedWindow = window.open(url, "_blank");
+      if (openedWindow) openedBookmarkWindows.add(openedWindow);
     });
+  }
+}
+
+function closeOpenedBookmarkTabs() {
+  const tabIds = Array.from(openedBookmarkTabIds);
+  const openWindows = Array.from(openedBookmarkWindows).filter((openedWindow) => !openedWindow.closed);
+  const total = tabIds.length + openWindows.length;
+  if (!total) {
+    if (typeof showToast === "function") showToast("No bookmark tabs opened from this page to close.", "info");
+    return;
+  }
+  if (!confirm(`Close ${total} bookmark tab${total === 1 ? "" : "s"} opened from selected bookmarks? Other tabs will stay open.`)) return;
+
+  const closeWindows = () => {
+    openWindows.forEach((openedWindow) => openedWindow.close());
+    openedBookmarkWindows.clear();
+  };
+
+  if (!tabIds.length) {
+    closeWindows();
+    if (typeof showToast === "function") showToast(`Closed ${total} bookmark tab${total === 1 ? "" : "s"}.`, "success");
+    return;
+  }
+
+  if (window.chrome && chrome.tabs) {
+    chrome.tabs.remove(tabIds, () => {
+      const error = chrome.runtime && chrome.runtime.lastError;
+      if (error) {
+        console.error("Could not close opened bookmark tabs:", error.message);
+        if (typeof showToast === "function") showToast(`Could not close bookmark tabs: ${error.message}`, "error");
+        return;
+      }
+      tabIds.forEach((id) => openedBookmarkTabIds.delete(id));
+      closeWindows();
+      if (typeof showToast === "function") showToast(`Closed ${total} bookmark tab${total === 1 ? "" : "s"}.`, "success");
+    });
+  } else if (window.browser && browser.tabs) {
+    browser.tabs.remove(tabIds).then(() => {
+      tabIds.forEach((id) => openedBookmarkTabIds.delete(id));
+      closeWindows();
+      if (typeof showToast === "function") showToast(`Closed ${total} bookmark tab${total === 1 ? "" : "s"}.`, "success");
+    }).catch((error) => {
+      console.error("Could not close opened bookmark tabs:", error);
+      if (typeof showToast === "function") showToast(`Could not close bookmark tabs: ${error.message}`, "error");
+    });
+  } else {
+    console.error("Browser tab closing is unavailable in this context.");
+    if (typeof showToast === "function") showToast("Browser tab closing is unavailable here.", "error");
   }
 }
 
@@ -1095,8 +1179,14 @@ document.addEventListener("DOMContentLoaded", function() {
   const importPreview = document.getElementById("bookmark-import-preview-modal");
   const importCancel = document.getElementById("bookmark-import-cancel");
   const importConfirm = document.getElementById("bookmark-import-confirm");
+  const restoreSettingsToggle = document.getElementById("bookmark-import-restore-settings");
   if (importCancel) importCancel.addEventListener("click", closeImportPreview);
   if (importConfirm) importConfirm.addEventListener("click", () => void confirmBookmarkImport());
+  if (restoreSettingsToggle) {
+    restoreSettingsToggle.addEventListener("change", function() {
+      updateBookmarkImportRestoreUi(Boolean(pendingBookmarkBackup && pendingBookmarkBackup.isFullBackup));
+    });
+  }
   if (importPreview) {
     importPreview.addEventListener("click", (event) => {
       if (event.target === importPreview) closeImportPreview();
@@ -1111,7 +1201,11 @@ document.addEventListener("DOMContentLoaded", function() {
   const addQuicklinkButton = document.getElementById("add-quicklink-button");
   const quicklinkNameInput = document.getElementById("settings-quicklink-name");
   const quicklinkUrlInput = document.getElementById("settings-quicklink-url");
+  const quicklinkCategoryInput = document.getElementById("settings-quicklink-category");
+  const quicklinkNewTabInput = document.getElementById("settings-quicklink-new-tab");
   const quicklinkError = document.getElementById("quicklink-error");
+  const quicklinkNameError = document.getElementById("quicklink-name-error");
+  const quicklinkUrlError = document.getElementById("quicklink-url-error");
 
   function setQuicklinkError(message) {
     if (quicklinkError) quicklinkError.textContent = message || "";
@@ -1119,52 +1213,83 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function isValidUrl(value) {
     try {
+      const hasHttpScheme = /^https?:\/\//i.test(value);
+      const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(value);
+      const hasHostPort = /^(?:[^/:?#]+|\[[^\]]+\]):\d+(?:[/?#]|$)/.test(value);
+      if (hasScheme && !hasHttpScheme && !hasHostPort) return false;
       const normalized = value.match(/^https?:\/\//i) ? value.trim() : "https://" + value.trim();
       const parsed = new URL(normalized);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
+      return !/\s/.test(value) && !parsed.hostname.includes("%") &&
+        (parsed.protocol === "http:" || parsed.protocol === "https:");
     } catch (e) {
       return false;
     }
   }
 
+  function validateQuicklinkInputs(showEmptyErrors = false) {
+    const label = quicklinkNameInput?.value.trim() || "";
+    const url = quicklinkUrlInput?.value.trim() || "";
+    const nameInvalid = !label;
+    const urlInvalid = !url || !isValidUrl(url);
+    const nameTouched = showEmptyErrors || quicklinkNameInput?.dataset.touched === "true";
+    const urlTouched = showEmptyErrors || quicklinkUrlInput?.dataset.touched === "true";
+    if (quicklinkNameError) quicklinkNameError.textContent = nameInvalid && nameTouched ? "Enter a button name." : "";
+    if (quicklinkUrlError) {
+      quicklinkUrlError.textContent = urlInvalid && urlTouched
+        ? !url ? "Enter a URL." : "Enter a valid HTTP or HTTPS URL."
+        : "";
+    }
+    quicklinkNameInput?.setAttribute("aria-invalid", String(nameInvalid && nameTouched));
+    quicklinkUrlInput?.setAttribute("aria-invalid", String(urlInvalid && urlTouched));
+    return !nameInvalid && !urlInvalid;
+  }
+
   if (quicklinkNameInput) {
     quicklinkNameInput.addEventListener("input", function() {
+      this.dataset.touched = "true";
+      validateQuicklinkInputs();
       setQuicklinkError("");
     });
   }
   if (quicklinkUrlInput) {
     quicklinkUrlInput.addEventListener("input", function() {
+      this.dataset.touched = "true";
+      validateQuicklinkInputs();
       setQuicklinkError("");
     });
   }
 
   if (addQuicklinkButton) {
     addQuicklinkButton.addEventListener("click", function() {
+      if (quicklinkNameInput) quicklinkNameInput.dataset.touched = "true";
+      if (quicklinkUrlInput) quicklinkUrlInput.dataset.touched = "true";
+      if (!validateQuicklinkInputs(true)) return;
+
       const label = quicklinkNameInput ? quicklinkNameInput.value.trim() : "";
       const url = quicklinkUrlInput ? quicklinkUrlInput.value.trim() : "";
-      if (!label) {
-        setQuicklinkError("Please enter a button name.");
-        return;
-      }
-      if (!url) {
-        setQuicklinkError("Please enter a URL.");
-        return;
-      }
-      if (!isValidUrl(url)) {
-        setQuicklinkError("Please enter a valid URL starting with http:// or https://");
-        return;
-      }
-
       const linkUrl = url.match(/^https?:\/\//i) ? url.trim() : "https://" + url.trim();
       const links = loadCustomQuickLinks();
-      links.push({ label: label, url: linkUrl });
-      saveCustomQuickLinks(links);
+      links.push({
+        label,
+        url: linkUrl,
+        category: quicklinkCategoryInput?.value.trim() || "General",
+        newTab: Boolean(quicklinkNewTabInput?.checked)
+      });
+      if (!saveCustomQuickLinks(links)) return;
       renderCustomQuickLinks();
       renderCustomQuickLinksList();
       setQuicklinkError("");
+      if (quicklinkNameError) quicklinkNameError.textContent = "";
+      if (quicklinkUrlError) quicklinkUrlError.textContent = "";
 
       if (quicklinkNameInput) quicklinkNameInput.value = "";
       if (quicklinkUrlInput) quicklinkUrlInput.value = "";
+      if (quicklinkCategoryInput) quicklinkCategoryInput.value = "";
+      if (quicklinkNewTabInput) quicklinkNewTabInput.checked = false;
+      quicklinkNameInput?.removeAttribute("aria-invalid");
+      quicklinkUrlInput?.removeAttribute("aria-invalid");
+      if (quicklinkNameInput) quicklinkNameInput.dataset.touched = "false";
+      if (quicklinkUrlInput) quicklinkUrlInput.dataset.touched = "false";
     });
   }
 
@@ -1296,7 +1421,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   const searchInput = document.getElementById("search-input");
   if (searchInput) {
-    searchInput.addEventListener("input", debouncedFilterBookmarks);
+    searchInput.addEventListener("input", function() {
+      if (typeof highlightVisibleBookmarks === "function") highlightVisibleBookmarks(this.value);
+      debouncedFilterBookmarks();
+    });
     searchInput.value = "";
   }
 
@@ -1358,7 +1486,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const sorted = getSortedQuickLinks();
     sorted.forEach(function(link) {
       const btn = document.getElementById(link.id);
-      if (btn) container.appendChild(btn);
+      const firstCustomCategory = container.querySelector(".custom-quicklink-category");
+      if (btn) container.insertBefore(btn, firstCustomCategory);
     });
   }
 
@@ -1420,45 +1549,89 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function loadCustomQuickLinks() {
     return safeLocalStorageGet("customQuickLinks", [], (value) =>
-      Array.isArray(value) && value.every((link) =>
-        link && typeof link.label === "string" && typeof link.url === "string" &&
-        ["http:", "https:"].includes(new URL(link.url).protocol)
-      )
-    );
-}
+      Array.isArray(value) && value.every((link) => {
+        if (!link || typeof link.label !== "string" || typeof link.url !== "string") return false;
+        try {
+          return ["http:", "https:"].includes(new URL(link.url).protocol) &&
+            (link.category === undefined || typeof link.category === "string") &&
+            (link.newTab === undefined || typeof link.newTab === "boolean");
+        } catch (error) {
+          return false;
+        }
+      })
+    ).map((link) => ({
+      ...link,
+      category: link.category?.trim() || "General",
+      newTab: link.newTab === true
+    }));
+  }
 
-function saveCustomQuickLinks(links) {
+  function saveCustomQuickLinks(links) {
     try {
       localStorage.setItem("customQuickLinks", JSON.stringify(links || []));
+      return true;
     } catch (e) {
       console.error("Failed to save custom quick links:", e);
       alert("Could not save custom quick links. Check available browser storage.");
+      return false;
     }
   }
 
-function renderCustomQuickLinks() {
-  const quickLinksContainer = document.querySelector(".quick-links");
-  if (!quickLinksContainer) return;
-  quickLinksContainer.querySelectorAll(".quick-link-dynamic").forEach(function(btn) { btn.remove(); });
+  function moveCustomQuickLink(fromIndex, toIndex) {
+    const links = loadCustomQuickLinks();
+    if (fromIndex < 0 || fromIndex >= links.length || toIndex < 0 || toIndex >= links.length || fromIndex === toIndex) return;
+    const [moved] = links.splice(fromIndex, 1);
+    links.splice(toIndex, 0, moved);
+    if (!saveCustomQuickLinks(links)) return;
+    renderCustomQuickLinks();
+    renderCustomQuickLinksList();
+  }
 
-  loadCustomQuickLinks().forEach(function(link) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "search-button quick-link-btn quick-link-dynamic";
-    button.setAttribute("data-tooltip", "Open " + link.label);
-    button.setAttribute("aria-label", "Open " + link.label);
-    const icon = document.createElement("span");
-    icon.className = "btn-icon";
-    icon.textContent = "🔗";
-    button.append(icon, document.createTextNode(` ${link.label}`));
-    button.addEventListener("click", function() {
-      window.location.href = link.url;
+  function renderCustomQuickLinks() {
+    const quickLinksContainer = document.querySelector(".quick-links");
+    if (!quickLinksContainer) return;
+    quickLinksContainer.querySelectorAll(".custom-quicklink-category").forEach((section) => section.remove());
+
+    const groupedLinks = new Map();
+    loadCustomQuickLinks().forEach((link) => {
+      const category = link.category || "General";
+      if (!groupedLinks.has(category)) groupedLinks.set(category, []);
+      groupedLinks.get(category).push(link);
     });
-    quickLinksContainer.appendChild(button);
-  });
-}
 
-function renderCustomQuickLinksList() {
+    groupedLinks.forEach((links, category) => {
+      const section = document.createElement("section");
+      section.className = "custom-quicklink-category";
+      section.setAttribute("aria-label", `${category} quick links`);
+      const heading = document.createElement("h2");
+      heading.className = "custom-quicklink-category-title";
+      heading.textContent = category;
+      const group = document.createElement("div");
+      group.className = "custom-quicklink-category-items";
+
+      links.forEach((link) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "search-button quick-link-btn quick-link-dynamic";
+        button.setAttribute("data-tooltip", `Open ${link.label}${link.newTab ? " in a new tab" : ""}`);
+        button.setAttribute("aria-label", `Open ${link.label}${link.newTab ? " in a new tab" : ""}`);
+        const icon = document.createElement("span");
+        icon.className = "btn-icon";
+        icon.textContent = "🔗";
+        button.append(icon, document.createTextNode(` ${link.label}`));
+        button.addEventListener("click", function() {
+          if (link.newTab) window.open(link.url, "_blank", "noopener,noreferrer");
+          else window.location.href = link.url;
+        });
+        group.appendChild(button);
+      });
+
+      section.append(heading, group);
+      quickLinksContainer.appendChild(section);
+    });
+  }
+
+  function renderCustomQuickLinksList() {
   const listContainer = document.getElementById("custom-quicklinks-list");
   if (!listContainer) return;
 
@@ -1468,20 +1641,106 @@ function renderCustomQuickLinksList() {
     return;
   }
 
-  listContainer.innerHTML = links.map(function(link, index) {
-    return "<div class=\"custom-quicklink-item\"><span>" + escapeHtml(link.label) + "</span><span>" + escapeHtml(link.url) + "</span><button type=\"button\" class=\"settings-button settings-button-secondary remove-quicklink-button\" data-index=\"" + index + "\">Remove</button></div>";
-  }).join("");
+  const fragment = document.createDocumentFragment();
+  links.forEach(function(link, index) {
+    const item = document.createElement("div");
+    item.className = "custom-quicklink-item";
+    item.setAttribute("role", "listitem");
+    item.draggable = true;
+    item.dataset.index = String(index);
+    item.setAttribute("aria-label", `${link.label}, ${link.category}, ${link.newTab ? "opens in new tab" : "opens in current tab"}. Drag to reorder.`);
 
-  listContainer.querySelectorAll(".remove-quicklink-button").forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      const index = Number(this.getAttribute("data-index"));
-      const links = loadCustomQuickLinks();
-      if (index >= 0 && index < links.length) {
-        links.splice(index, 1);
-        saveCustomQuickLinks(links);
-        renderCustomQuickLinks();
-        renderCustomQuickLinksList();
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "custom-quicklink-drag-handle";
+    dragHandle.textContent = "⠿";
+    dragHandle.title = "Drag to reorder";
+    dragHandle.setAttribute("aria-hidden", "true");
+    const details = document.createElement("div");
+    details.className = "custom-quicklink-details";
+    const name = document.createElement("strong");
+    name.textContent = link.label;
+    const metadata = document.createElement("span");
+    metadata.textContent = `${link.category} · ${link.newTab ? "New tab" : "Current tab"}`;
+    const url = document.createElement("span");
+    url.className = "custom-quicklink-url";
+    url.textContent = link.url;
+    const newTabLabel = document.createElement("label");
+    newTabLabel.className = "custom-quicklink-new-tab-option";
+    const newTabCheckbox = document.createElement("input");
+    newTabCheckbox.type = "checkbox";
+    newTabCheckbox.checked = link.newTab;
+    newTabCheckbox.setAttribute("aria-label", `Open ${link.label} in a new tab`);
+    newTabCheckbox.addEventListener("change", () => {
+      const currentLinks = loadCustomQuickLinks();
+      if (!currentLinks[index]) return;
+      currentLinks[index].newTab = newTabCheckbox.checked;
+      if (!saveCustomQuickLinks(currentLinks)) {
+        newTabCheckbox.checked = link.newTab;
+        return;
       }
+      renderCustomQuickLinks();
+      metadata.textContent = `${link.category} · ${newTabCheckbox.checked ? "New tab" : "Current tab"}`;
+      link.newTab = newTabCheckbox.checked;
+    });
+    newTabLabel.append(newTabCheckbox, document.createTextNode(" Open in new tab"));
+    details.append(name, metadata, url, newTabLabel);
+
+    const controls = document.createElement("div");
+    controls.className = "custom-quicklink-controls";
+    const upButton = document.createElement("button");
+    upButton.type = "button";
+    upButton.className = "settings-button settings-button-secondary";
+    upButton.textContent = "↑";
+    upButton.title = "Move up";
+    upButton.setAttribute("aria-label", `Move ${link.label} up`);
+    upButton.disabled = index === 0;
+    upButton.addEventListener("click", () => moveCustomQuickLink(index, index - 1));
+
+    const downButton = document.createElement("button");
+    downButton.type = "button";
+    downButton.className = "settings-button settings-button-secondary";
+    downButton.textContent = "↓";
+    downButton.title = "Move down";
+    downButton.setAttribute("aria-label", `Move ${link.label} down`);
+    downButton.disabled = index === links.length - 1;
+    downButton.addEventListener("click", () => moveCustomQuickLink(index, index + 1));
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "settings-button settings-button-secondary remove-quicklink-button";
+    removeButton.textContent = "Remove";
+    removeButton.setAttribute("aria-label", `Remove ${link.label}`);
+    removeButton.addEventListener("click", function() {
+      const currentLinks = loadCustomQuickLinks();
+      currentLinks.splice(index, 1);
+      if (!saveCustomQuickLinks(currentLinks)) return;
+      renderCustomQuickLinks();
+      renderCustomQuickLinksList();
+    });
+
+    controls.append(upButton, downButton, removeButton);
+    item.append(dragHandle, details, controls);
+    fragment.appendChild(item);
+  });
+  listContainer.replaceChildren(fragment);
+
+  listContainer.querySelectorAll(".custom-quicklink-item").forEach((item) => {
+    item.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("text/plain", item.dataset.index);
+      event.dataTransfer.effectAllowed = "move";
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragend", () => item.classList.remove("dragging"));
+    item.addEventListener("dragover", (event) => event.preventDefault());
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+      let toIndex = Number(item.dataset.index);
+      const rect = item.getBoundingClientRect();
+      if (event.clientY > rect.top + rect.height / 2) toIndex += 1;
+      if (fromIndex < toIndex) toIndex -= 1;
+      toIndex = Math.max(0, Math.min(toIndex, loadCustomQuickLinks().length - 1));
+      moveCustomQuickLink(fromIndex, toIndex);
     });
   });
 }
@@ -1664,6 +1923,7 @@ window.addEventListener('unload', function() {
 });
 
 function filterBookmarks() {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const input = document.getElementById("search-input").value.trim().toLowerCase();
@@ -1693,6 +1953,7 @@ function filterBookmarks() {
 }
 
 function filterBy(category) {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const cat = category.toLowerCase();
@@ -1954,6 +2215,7 @@ function showSmartSuggestionsPanel() {
 }
 
 function filterMostVisited() {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const historyAPI = typeof browser !== "undefined" ? browser.history : chrome.history;
@@ -1980,6 +2242,7 @@ function filterMostVisited() {
 }
 
 function filterPinned() {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = true;
   currentColumns = columns
@@ -1995,6 +2258,7 @@ function filterPinned() {
 }
 
 function filterJobsOnly() {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const jobsColumns = columns.filter(function(col) { return col.title.toLowerCase().indexOf("jobs") !== -1; });
@@ -2084,14 +2348,30 @@ function generateFilterButtons(folders) {
   const pinnedButton = makeBtn({ id: "filter-pinned", text: "📌 Pinned", title: "Show only pinned bookmarks", clickHandler: function() { filterPinned(); updateCloseAllVisibility(); } });
   const clearPinsButton = makeBtn({ id: "clear-pins", text: "🗑️ Clear Pins", title: "Remove all pinned bookmarks", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
   const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Work Mode", title: "Configure work mode settings", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
+  const scheduleWorkModeButton = makeBtn({
+    id: "filter-work-mode",
+    text: "🗓️ Work Schedule: Off",
+    title: "Toggle the automatic Work Mode schedule.",
+    clickHandler: toggleWorkMode
+  });
+  const manualWorkModeButton = makeBtn({
+    id: "manual-work-mode-button",
+    text: "💼 Work Now: Off",
+    title: "Temporarily show selected work folders, independent of the schedule.",
+    clickHandler: toggleManualWorkMode
+  });
 
-  [configureWorkModeButton, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) { filterButtonsContainer.appendChild(btn); });
+  [configureWorkModeButton, scheduleWorkModeButton, manualWorkModeButton, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) {
+    filterButtonsContainer.appendChild(btn);
+  });
 
   updateCloseAllVisibility();
   updateClearPinsVisibility();
+  updateWorkModeButton();
 }
 
 function resetFilters() {
+  clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   currentColumns = columns;
@@ -2406,8 +2686,9 @@ function clearAllPins() {
 }
 
 const WORK_MODE_KEY = "workModeFolders";
+let manualWorkModeActive = false;
 
-function applyWorkModeFilter() {
+function applyWorkModeFilter(mode = "scheduled") {
   isShowingPins = false;
   const selected = getSavedWorkModeFolders();
   if (!selected.length) {
@@ -2415,6 +2696,11 @@ function applyWorkModeFilter() {
     clearMultiSelect();
     renderCurrent();
     document.body.classList.remove("work-mode-active");
+    document.body.classList.remove("work-mode-manual-active");
+    if (mode === "manual") {
+      manualWorkModeActive = false;
+      updateWorkModeButton();
+    }
     return;
   }
 
@@ -2425,20 +2711,38 @@ function applyWorkModeFilter() {
   renderCurrent();
   document.body.classList.remove("jobs-hours-active");
   document.body.classList.add("work-mode-active");
+  document.body.classList.toggle("work-mode-manual-active", mode === "manual");
 }
 
 function autoApplyWorkMode() {
+  if (manualWorkModeActive) {
+    applyWorkModeFilter("manual");
+    return;
+  }
+
   const workModeFolders = getSavedWorkModeFolders();
   const scheduleEnabled = getWorkModeEnabled();
   const withinWorkHours = typeof isWithinWorkHours === "function" && isWithinWorkHours();
 
   if (scheduleEnabled && withinWorkHours && workModeFolders.length) {
-    applyWorkModeFilter();
+    applyWorkModeFilter("scheduled");
   } else if (document.body.classList.contains("work-mode-active")) {
     currentColumns = columns;
     clearMultiSelect();
     renderCurrent();
     document.body.classList.remove("work-mode-active");
+    document.body.classList.remove("work-mode-manual-active");
+  }
+}
+
+function clearManualWorkModeOverride() {
+  manualWorkModeActive = false;
+  document.body.classList.remove("work-mode-manual-active");
+  const button = document.getElementById("manual-work-mode-button");
+  if (button) {
+    button.textContent = "💼 Work Now: Off";
+    button.setAttribute("aria-pressed", "false");
+    button.title = "Temporarily show selected work folders, independent of the schedule.";
   }
 }
 
@@ -2447,11 +2751,20 @@ function updateWorkModeButton() {
   const scheduleEnabled = getWorkModeEnabled();
   if (btn) {
     const hasFolders = getSavedWorkModeFolders().length > 0;
-    btn.textContent = scheduleEnabled ? "💼 Work Mode: Scheduled" : "💼 Work Mode: Off";
+    btn.textContent = scheduleEnabled ? "🗓️ Work Schedule: On" : "🗓️ Work Schedule: Off";
     btn.title = scheduleEnabled && !hasFolders
       ? "The schedule is enabled but no folders are selected. Configure Work Mode settings."
-      : "Toggle the automatic Work Mode schedule. Configure hours and folders in Work Mode settings.";
+      : "Toggle the automatic Work Mode schedule. Configure hours and folders using the Work Mode settings button.";
     btn.setAttribute("aria-pressed", String(scheduleEnabled));
+  }
+
+  const manualButton = document.getElementById("manual-work-mode-button");
+  if (manualButton) {
+    manualButton.textContent = manualWorkModeActive ? "💼 Work Now: On" : "💼 Work Now: Off";
+    manualButton.title = manualWorkModeActive
+      ? "Turn off the temporary work folder filter."
+      : "Temporarily show selected work folders, independent of the schedule.";
+    manualButton.setAttribute("aria-pressed", String(manualWorkModeActive));
   }
   
   // Show/hide work mode dependent buttons based on work mode state
@@ -2461,6 +2774,31 @@ function updateWorkModeButton() {
       button.style.display = scheduleEnabled ? "inline-block" : "none";
     }
   });
+  updateSettingsWorkModeSummary();
+}
+
+function updateSettingsWorkModeSummary() {
+  const summary = document.getElementById("settings-work-mode-summary");
+  if (!summary) return;
+
+  const config = getWorkHoursConfig();
+  const selectedFolders = getSavedWorkModeFolders();
+  const selectedDays = [
+    ["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"],
+    ["fri", "Fri"], ["sat", "Sat"], ["sun", "Sun"]
+  ].filter(([day]) => config.days[day]).map(([, label]) => label);
+  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const everyDay = selectedDays.length === 7;
+  const weekdaysOnly = weekdays.every((day) => selectedDays.includes(day)) && selectedDays.length === 5;
+  const daysLabel = everyDay ? "Every day" : weekdaysOnly ? "Weekdays" : selectedDays.length ? selectedDays.join(" · ") : "No active days";
+  const timeLabel = typeof formatWorkModeTime === "function"
+    ? `${formatWorkModeTime(config.startTime)}–${formatWorkModeTime(config.endTime)} ET`
+    : `${config.startTime}–${config.endTime} ET`;
+  const scheduleStatus = typeof getWorkModeScheduleStatus === "function"
+    ? getWorkModeScheduleStatus(getWorkModeEnabled(), selectedFolders.length, config)
+    : getWorkModeEnabled() ? "Schedule on" : "Schedule off";
+  const manualStatus = manualWorkModeActive ? " Temporary Work Now filter is on." : "";
+  summary.textContent = `${scheduleStatus}. ${daysLabel} · ${timeLabel} · ${selectedFolders.length} folder${selectedFolders.length === 1 ? "" : "s"} selected.${manualStatus}`;
 }
 
 function updateSortButton() {
@@ -2497,8 +2835,24 @@ function toggleWorkMode() {
   autoApplyWorkMode();
 }
 
-const workModeButton = document.getElementById("filter-work-mode");
-if (workModeButton) workModeButton.addEventListener("click", toggleWorkMode);
+function toggleManualWorkMode() {
+  if (manualWorkModeActive) {
+    manualWorkModeActive = false;
+    document.body.classList.remove("work-mode-manual-active");
+    autoApplyWorkMode();
+    updateWorkModeButton();
+    return;
+  }
+
+  if (!getSavedWorkModeFolders().length) {
+    showWorkModeModal(columns);
+    return;
+  }
+
+  manualWorkModeActive = true;
+  applyWorkModeFilter("manual");
+  updateWorkModeButton();
+}
 
 // Check work mode every minute to automatically apply during configured hours
 const workModeIntervalId = setInterval(function() {
@@ -2545,18 +2899,28 @@ function renderArchivedFoldersList() {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = archived.indexOf(folderName) === -1;
+    checkbox.setAttribute("aria-label", `Show ${folderName} in bookmarks`);
 
-    const text = document.createTextNode(folderName);
+    const text = document.createElement("span");
+    text.className = "settings-archived-name";
+    text.textContent = folderName;
+    const status = document.createElement("span");
+    status.className = "settings-archived-status";
+    status.textContent = checkbox.checked ? "Visible" : "Archived";
 
     label.appendChild(checkbox);
     label.appendChild(text);
 
     checkbox.addEventListener("change", function() {
       toggleFolderArchive(folderName);
+      status.textContent = checkbox.checked ? "Visible" : "Archived";
+      item.classList.toggle("is-archived", !checkbox.checked);
       refreshBookmarks();
     });
 
     item.appendChild(label);
+    item.appendChild(status);
+    item.classList.toggle("is-archived", !checkbox.checked);
     container.appendChild(item);
   });
 }
@@ -2841,6 +3205,8 @@ function initSettingsModal() {
       this.setAttribute("tabindex", "0");
       const targetPanel = document.querySelector('.settings-tab-panel[data-tab-panel="' + tabName + '"]');
       if (targetPanel) targetPanel.classList.add("active");
+      const settingsContent = document.querySelector(".settings-content");
+      if (settingsContent) settingsContent.scrollTop = 0;
     });
 
     btn.addEventListener("keydown", function(event) {
@@ -3137,6 +3503,36 @@ function initSettingsModal() {
         refreshBookmarks();
       }
     });
+  }
+
+  const settingsCloseOpenedTabsBtn = document.getElementById("settings-close-opened-tabs-button");
+  if (settingsCloseOpenedTabsBtn) {
+    settingsCloseOpenedTabsBtn.addEventListener("click", closeOpenedBookmarkTabs);
+  }
+
+  const settingsWorkModeConfigureBtn = document.getElementById("settings-work-mode-configure-button");
+  if (settingsWorkModeConfigureBtn) {
+    settingsWorkModeConfigureBtn.addEventListener("click", function() {
+      if (typeof showWorkModeModal === "function") showWorkModeModal(columns);
+    });
+  }
+
+  const feedbackLink = document.getElementById("settings-feedback-link");
+  const extensionVersion = document.getElementById("settings-extension-version");
+  const runtime = window.chrome?.runtime || window.browser?.runtime;
+  const version = runtime?.getManifest ? runtime.getManifest().version : "0.17";
+  if (extensionVersion) extensionVersion.textContent = `v${version}`;
+  if (feedbackLink) {
+    const feedbackBody = [
+      "What were you trying to do?",
+      "",
+      "What happened?",
+      "",
+      "Extension version: " + version,
+      "",
+      "Please do not include passwords or sensitive bookmark information."
+    ].join("\n");
+    feedbackLink.href = `mailto:madanyx@gmail.com?subject=${encodeURIComponent("Hello Stitch feedback")}&body=${encodeURIComponent(feedbackBody)}`;
   }
 
   ["random-theme-button", "random-font-button", "random-font-size-button"].forEach(function(id) {

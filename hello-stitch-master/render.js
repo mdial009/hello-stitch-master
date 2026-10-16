@@ -1,4 +1,63 @@
 // Render functions for displaying bookmarks
+function setBookmarkTitleHighlight(element, text, query) {
+  element.replaceChildren();
+  const source = String(text || "");
+  const normalizeWithMap = (value) => {
+    let normalized = "";
+    const map = [];
+    for (let offset = 0; offset < value.length;) {
+      const character = String.fromCodePoint(value.codePointAt(offset));
+      const start = offset;
+      offset += character.length;
+      const segment = character.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      for (const part of segment) {
+        normalized += part;
+        map.push({ start, end: offset });
+      }
+    }
+    return { normalized, map };
+  };
+  const normalizedSource = normalizeWithMap(source);
+  const normalizedQuery = normalizeWithMap(String(query || "").trim()).normalized;
+  if (!normalizedQuery) {
+    element.textContent = source;
+    return;
+  }
+
+  const ranges = [];
+  let searchFrom = 0;
+  while (searchFrom < normalizedSource.normalized.length) {
+    const matchAt = normalizedSource.normalized.indexOf(normalizedQuery, searchFrom);
+    if (matchAt < 0) break;
+    const first = normalizedSource.map[matchAt];
+    const last = normalizedSource.map[matchAt + normalizedQuery.length - 1];
+    if (first && last) ranges.push({ start: first.start, end: last.end });
+    searchFrom = matchAt + normalizedQuery.length;
+  }
+  if (!ranges.length) {
+    element.textContent = source;
+    return;
+  }
+
+  let cursor = 0;
+  ranges.forEach((range) => {
+    if (range.start < cursor) return;
+    if (range.start > cursor) element.appendChild(document.createTextNode(source.slice(cursor, range.start)));
+    const mark = document.createElement("mark");
+    mark.className = "bookmark-search-match";
+    mark.textContent = source.slice(range.start, range.end);
+    element.appendChild(mark);
+    cursor = range.end;
+  });
+  element.appendChild(document.createTextNode(source.slice(cursor)));
+}
+
+function highlightVisibleBookmarks(query) {
+  document.querySelectorAll(".bookmark-title").forEach((title) => {
+    setBookmarkTitleHighlight(title, title.dataset.bookmarkTitle || title.textContent, query);
+  });
+}
+
 function render(columns) {
   const container = document.getElementById("container");
   if (!container) return;
@@ -103,6 +162,18 @@ function render(columns) {
     
     columnDiv.appendChild(summary);
 
+    const localFilter = document.createElement("input");
+    localFilter.type = "search";
+    localFilter.className = "folder-bookmark-filter";
+    localFilter.placeholder = "Filter titles, URLs, or tags...";
+    localFilter.setAttribute("aria-label", `Filter bookmarks in ${col.title}`);
+    localFilter.title = "Filter bookmarks in this folder by title, URL, or tag.";
+    const localFilterStatus = document.createElement("span");
+    localFilterStatus.className = "folder-bookmark-filter-status";
+    localFilterStatus.setAttribute("role", "status");
+    localFilterStatus.setAttribute("aria-live", "polite");
+    columnDiv.append(localFilter, localFilterStatus);
+
     const ul = document.createElement("ul");
     ul.className = "bookmark-list";
     
@@ -132,7 +203,12 @@ function render(columns) {
         link.href = bm.url;
         link.className = "bookmark-link";
         link.setAttribute("data-url", bm.url);
-        link.textContent = bm.title;
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "bookmark-title";
+        titleSpan.dataset.bookmarkTitle = bm.title || "";
+        const globalSearch = document.getElementById("search-input")?.value || "";
+        setBookmarkTitleHighlight(titleSpan, bm.title || "", globalSearch);
+        link.appendChild(titleSpan);
         if (typeof isBrokenLink === "function" && isBrokenLink(bm.url)) {
           const indicator = document.createElement("span");
           indicator.className = "broken-indicator";
@@ -203,6 +279,8 @@ function render(columns) {
 
         // AI Tags display
         const bmTags = window.tagsByUrl && window.tagsByUrl[bm.url];
+        li.dataset.folderSearchText = [bm.title, bm.url, ...(bmTags || [])]
+          .join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
         if (bmTags && bmTags.length > 0) {
           const tagsContainer = document.createElement("div");
           tagsContainer.className = "bookmark-tags";
@@ -372,6 +450,24 @@ function render(columns) {
       });
     }
 
+    const updateFolderFilter = () => {
+      const query = localFilter.value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+      if (query && columnDiv.classList.contains("collapsed")) {
+        columnDiv.classList.remove("collapsed");
+        collapseBtn.classList.remove("collapsed");
+        ul.style.display = "";
+      }
+      const items = Array.from(ul.querySelectorAll(".bookmark-item"));
+      let visibleCount = 0;
+      items.forEach((item) => {
+        const matches = !query || item.dataset.folderSearchText.includes(query);
+        item.hidden = !matches;
+        if (matches) visibleCount += 1;
+      });
+      localFilterStatus.textContent = query ? `${visibleCount} of ${items.length} bookmarks` : `${items.length} bookmarks`;
+    };
+    localFilter.addEventListener("input", updateFolderFilter);
+    updateFolderFilter();
     columnDiv.appendChild(ul);
     
     // Restore collapsed state from localStorage

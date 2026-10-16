@@ -572,6 +572,7 @@ function showWorkModeModal(columns) {
   const folderCount = document.getElementById("workmode-folder-count");
   const emptyFoldersMessage = document.getElementById("workmode-empty-folders");
   const summary = document.getElementById("workmode-summary");
+  const selectedFoldersSummary = document.getElementById("workmode-selected-folders-summary");
   const validationError = document.getElementById("workmode-validation-error");
   const form = document.getElementById("workmode-form");
   const opener = document.activeElement;
@@ -649,6 +650,14 @@ function showWorkModeModal(columns) {
     if (folderCount) folderCount.textContent = `${selectedFolders} selected`;
     if (summary) {
       summary.textContent = `${daySummary} · ${formatWorkModeTime(startTimeInput.value)}–${formatWorkModeTime(endTimeInput.value)} ET · ${folderSummary}`;
+    }
+    if (selectedFoldersSummary) {
+      const selectedFolderNames = getFolderCheckboxes()
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value);
+      selectedFoldersSummary.textContent = selectedFolderNames.length
+        ? `Selected folders: ${selectedFolderNames.join(", ")}`
+        : "No work folders selected.";
     }
     if (workModeStatusText) {
       const scheduleStatus = getWorkModeScheduleStatus(

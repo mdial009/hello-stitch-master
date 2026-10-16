@@ -41,6 +41,10 @@ Chrome
 
 The Data & Backup settings include a versioned bookmark-only backup and a full backup. Bookmark-only backups preserve folder paths and manual order. Full backups also include extension local data and settings; the selected browser folder is kept local to the current browser profile. Older JSON exports containing a plain list of columns remain importable.
 
+Settings are organized into Appearance, Layout & Behavior, and Privacy & Data. Layout & Behavior summarizes the Work Mode schedule and links to its configuration. About & Feedback opens a prefilled email draft; nothing is sent automatically.
+
+Custom quick links support categories, per-link new-tab behavior, drag-and-drop and button-based reordering, with inline name and URL validation. Bookmark search highlights matching titles; each bookmark folder also has a local filter for titles, URLs, and tags. The Work Mode dialog lists the selected folders alongside its live hours summary.
+
 Import always shows a preview before applying a merge. A matching URL in the same destination folder has its title updated; the same URL elsewhere is copied into the imported location so existing placements are preserved. If the merge fails partway through, the dialog reports that earlier changes may already have been saved.
 
 Manual sorting follows the browser bookmark order and enables drag-and-drop. Other sort modes disable dragging so displayed positions cannot be confused with the saved bookmark order. If the usual bookmarks toolbar cannot be identified, the extension asks you to select an existing browser bookmark folder; it does not move or modify that folder's current contents.
