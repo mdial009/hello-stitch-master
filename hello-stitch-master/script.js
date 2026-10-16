@@ -8,6 +8,67 @@ const SORT_PREFERENCE_KEY = "bookmarkSortPreference";
 const PINS_KEY = "pinnedBookmarks";
 const TAGS_KEY = "bookmarkTags";
 const FONT_SIZE_KEY = "selectedFontSize";
+const FONT_FAMILIES = {
+  "buka-bird": "Buka Bird",
+  fredoka: "Fredoka",
+  poppins: "Poppins",
+  roboto: "Roboto",
+  "open-sans": "Open Sans",
+  lato: "Lato",
+  montserrat: "Montserrat",
+  raleway: "Raleway",
+  nunito: "Nunito",
+  playfair: "Playfair Display",
+  oswald: "Oswald",
+  ubuntu: "Ubuntu",
+  "josefin-sans": "Josefin Sans",
+  "josefin-slab": "Josefin Slab",
+  merriweather: "Merriweather",
+  quicksand: "Quicksand",
+  comfortaa: "Comfortaa",
+  cabin: "Cabin",
+  karla: "Karla",
+  lobster: "Lobster",
+  bangers: "Bangers",
+  "indie-flower": "Indie Flower",
+  caveat: "Caveat",
+  "amatic-sc": "Amatic SC",
+  anton: "Anton",
+  "maven-pro": "Maven Pro",
+  ptsans: "PT Sans",
+  "ptsans-narrow": "PT Sans Narrow",
+  "ptsans-caption": "PT Sans Caption",
+  serif: "PT Serif",
+  oxygen: "Oxygen",
+  inconsolata: "Inconsolata",
+  "noto-sans": "Noto Sans",
+  "noto-serif": "Noto Serif",
+  varela: "Varela",
+  "varela-round": "Varela Round",
+  exo: "Exo",
+  "exo-2": "Exo 2",
+  "fjalla-one": "Fjalla One",
+  orbitron: "Orbitron",
+  rajdhani: "Rajdhani",
+  teko: "Teko",
+  "fira-sans": "Fira Sans",
+  "fira-mono": "Fira Mono",
+  audiowide: "Audiowide",
+  boogaloo: "Boogaloo",
+  "press-start-2p": "Press Start 2P",
+  "titan-one": "Titan One",
+  syncopate: "Syncopate"
+};
+
+function loadFontCatalog() {
+  const fontLink = document.getElementById("google-fonts-link");
+  if (!fontLink) return;
+  const families = [...new Set(Object.values(FONT_FAMILIES))]
+    .filter((family) => family !== FONT_FAMILIES["buka-bird"]);
+  fontLink.href = `https://fonts.googleapis.com/css2?${families
+    .map((family) => `family=${encodeURIComponent(family).replace(/%20/g, "+")}`)
+    .join("&")}&display=swap`;
+}
 const SEARCH_HISTORY_KEY = "searchHistory";
 const ARCHIVED_FOLDERS_KEY = "archivedFolders";
 const BOOKMARK_ROOT_ID_KEY = "bookmarkRootFolderId";
@@ -2529,6 +2590,41 @@ function initSettingsModal() {
   const remoteFaviconsStatus = document.getElementById("remote-favicons-status");
 
   if (!settingsModal || !settingsButton) return;
+  loadFontCatalog();
+  const themePreviewAccents = {
+    default: "#ff9900", auto: "#a8b4c8", matrix: "#00ff00", ocean: "#00bfff",
+    sunset: "#ff6b6b", forest: "#7cfc00", midnight: "#6c5ce7", aurora: "#00ff9f",
+    rose: "#ff6b9d", lemon: "#fff200", coral: "#ff7f50", lavender: "#e6e6fa",
+    nord: "#88c0d0", dracula: "#bd93f9", monokai: "#f92672", cyberpunk: "#ff00ff",
+    amber: "#ffb000", teal: "#20c997", indigo: "#6c5ce7", emerald: "#2ecc71",
+    ruby: "#e74c3c", sapphire: "#3498db", amethyst: "#9b59b6", copper: "#e67e22",
+    jade: "#00b894", crimson: "#c0392b", slate: "#95a5a6", mint: "#00d2a0",
+    tangerine: "#ff8c42", violet: "#8e44ad", sky: "#00b4d8", persimmon: "#ff6348",
+    graphite: "#bdc3c7", "neon-green": "#39ff14", "hot-pink": "#ff69b4",
+    arctic: "#a8e6cf", sunflower: "#ffc300", magenta: "#ff00ff", steel: "#7f8c8d",
+    peach: "#ffccbc", electric: "#00e5ff", moss: "#8bc34a", plum: "#ce93d8",
+    rust: "#d35400", cloud: "#ecf0f1", "neon-blue": "#00d4ff", butter: "#fff176",
+    scarlet: "#ff1744", honey: "#ffab40", phantom: "#cfd8dc", barbie: "#ff00e5",
+    blizzard: "#e0f7fa", toxic: "#adff2f", frost: "#b3e5fc", garnet: "#c2185b",
+    royal: "#4169e1", pistachio: "#a3d977"
+  };
+  document.querySelectorAll(".settings-section-theme .theme-preview").forEach((preview) => {
+    const option = preview.closest(".settings-option");
+    const radio = option?.querySelector('input[name="theme"]');
+    if (!radio) return;
+    preview.textContent = "Aa";
+    option.style.setProperty("--theme-preview-accent", themePreviewAccents[radio.value] || "#ff9900");
+    preview.setAttribute("aria-hidden", "true");
+  });
+  document.querySelectorAll(".settings-section-font .font-preview").forEach((preview) => {
+    const option = preview.closest(".settings-option");
+    const radio = option && option.querySelector('input[name="font"]');
+    const label = option && option.querySelector("span");
+    if (!radio || !label || !FONT_FAMILIES[radio.value]) return;
+    preview.textContent = label.textContent.trim();
+    preview.style.fontFamily = `"${FONT_FAMILIES[radio.value]}", sans-serif`;
+    preview.setAttribute("aria-hidden", "true");
+  });
 
   let settingsHasChanges = false;
   let settingsSnapshot = null;
@@ -2539,7 +2635,8 @@ function initSettingsModal() {
     "selectedFont",
     FONT_SIZE_KEY,
     SORT_PREFERENCE_KEY,
-    ANIMATIONS_KEY
+    ANIMATIONS_KEY,
+    MOTION_PREFERENCES_KEY
   ];
 
   function captureSettingsSnapshot() {
@@ -2571,7 +2668,7 @@ function initSettingsModal() {
     applyTheme(settingsSnapshot.selectedTheme || "default");
     applyFont(settingsSnapshot.selectedFont || "poppins");
     applyFontSize(settingsSnapshot[FONT_SIZE_KEY] || "20");
-    applyAnimations(settingsSnapshot[ANIMATIONS_KEY] !== "false");
+    applyMotionPreferences(loadMotionPreferences());
     setSortPreference(settingsSnapshot[SORT_PREFERENCE_KEY] || "frequency");
 
     previewSettingKeys.forEach((key) => {
@@ -2636,7 +2733,7 @@ function initSettingsModal() {
   }
 
   const settingsInputs = settingsModal.querySelectorAll(
-    'input[name="theme"], input[name="font"], input[name="fontSize"], input[name="animations"], #settings-title-input, #settings-sort-select'
+    'input[name="theme"], input[name="font"], input[name="fontSize"], input[name="motionOption"], #settings-title-input, #settings-sort-select'
   );
   settingsInputs.forEach(function(input) {
     input.addEventListener("change", markSettingsChanged);
@@ -2822,8 +2919,9 @@ function initSettingsModal() {
       if (fontRadios.length) fontRadios.forEach(function(r) { r.checked = r.value === "poppins"; });
       const fontSizeRadios = document.querySelectorAll('input[name="fontSize"]');
       if (fontSizeRadios.length) fontSizeRadios.forEach(function(r) { r.checked = r.value === "20"; });
-      const animationsRadios = document.querySelectorAll('input[name="animations"]');
-      if (animationsRadios.length) animationsRadios.forEach(function(r) { r.checked = r.value === "enabled"; });
+      document.querySelectorAll('input[name="motionOption"]').forEach(function(input) {
+        input.checked = true;
+      });
       if (sortSelect) sortSelect.value = "frequency";
 
       if (settingsTitleInput) settingsTitleInput.value = "Hello, Stitch";
@@ -2899,11 +2997,7 @@ function initSettingsModal() {
          applyFontSize(selectedFontSize.value);
        }
 
-       // Save animations preference
-       const selectedAnimations = document.querySelector('input[name="animations"]:checked');
-       if (selectedAnimations) {
-         applyAnimations(selectedAnimations.value === "enabled");
-       }
+       applyMotionPreferences(readMotionPreferencesFromSettings());
 
        const settingsSortSelect = document.getElementById("settings-sort-select");
       if (settingsSortSelect) {
@@ -2963,13 +3057,10 @@ function initSettingsModal() {
      });
    });
 
-   // Animations radio buttons - live preview
-   const animationsRadios = document.querySelectorAll('input[name="animations"]');
-   animationsRadios.forEach(function(radio) {
-     radio.addEventListener("change", function() {
-       if (this.checked) {
-         applyAnimations(this.value === "enabled");
-       }
+   // Motion preferences preview immediately and are restored if Settings is discarded.
+   document.querySelectorAll('input[name="motionOption"]').forEach(function(input) {
+     input.addEventListener("change", function() {
+       applyMotionPreferences(readMotionPreferencesFromSettings());
      });
    });
 
@@ -3097,11 +3188,9 @@ function loadSettingsValues() {
      sortSelect.value = savedSort;
    }
 
-   // Load animations preference
-   const animationsRadios = document.querySelectorAll('input[name="animations"]');
-   const savedAnimations = loadAnimations();
-   animationsRadios.forEach(function(radio) {
-     radio.checked = radio.value === (savedAnimations ? "enabled" : "disabled");
+   const savedMotionPreferences = loadMotionPreferences();
+   document.querySelectorAll('input[name="motionOption"]').forEach(function(input) {
+     input.checked = savedMotionPreferences[input.value];
    });
 }
 
@@ -3143,13 +3232,14 @@ function setupSystemThemeListener() {
 }
 
 function applyFont(fontName) {
+  const fontFamily = FONT_FAMILIES[fontName] || FONT_FAMILIES.poppins;
   Array.from(document.body.classList)
     .filter((className) => className.startsWith("font-") && !className.startsWith("font-size-"))
     .forEach((className) => document.body.classList.remove(className));
-  if (fontName && fontName !== "buka-bird") {
-    document.body.classList.add("font-" + fontName);
-  }
-  localStorage.setItem("selectedFont", fontName || "poppins");
+  if (!FONT_FAMILIES[fontName]) fontName = "poppins";
+  document.body.classList.toggle("font-" + fontName, fontName !== "buka-bird");
+  document.body.style.fontFamily = `"${fontFamily}", ${fontName === "fira-mono" || fontName === "inconsolata" ? "monospace" : fontName === "serif" || fontName === "josefin-slab" || fontName === "merriweather" || fontName === "noto-serif" || fontName === "playfair" ? "serif" : "sans-serif"}`;
+  localStorage.setItem("selectedFont", fontName);
 }
 
 // Initialize settings modal on DOM ready
@@ -3160,8 +3250,8 @@ document.addEventListener("DOMContentLoaded", function() {
   const savedFontSize = localStorage.getItem(FONT_SIZE_KEY) || "20";
   applyFontSize(savedFontSize);
   
-  // Load saved animations setting
-  applyAnimations(loadAnimations());
+  // Load saved motion preferences
+  applyMotionPreferences(loadMotionPreferences());
 
   // Add event listeners for random buttons
   const randomThemeBtn = document.getElementById("random-theme-button");
@@ -3214,7 +3304,7 @@ function randomizeTheme() {
 
 // Randomize Font Function
 function randomizeFont() {
-  const fonts = ["buka-bird", "fredoka", "poppins", "roboto", "open-sans", "lato", "montserrat", "raleway", "nunito", "playfair", "oswald", "ubuntu", "josefin-sans", "josefin-slab", "merriweather", "quicksand", "comfortaa", "cabin", "karla", "lobster", "bangers", "indie-flower", "caveat", "amatic-sc", "anton", "maven-pro", "ptsans", "ptsans-narrow", "ptsans-caption", "serif", "oxygen", "inconsolata", "noto-sans", "noto-serif", "varela", "varela-round", "exo", "exo-2", "fjalla-one", "orbitron", "rajdhani", "teko", "fira-sans", "fira-mono", "audiowide", "boogaloo", "press-start-2p", "titan-one", "syncopate"];
+  const fonts = Array.from(document.querySelectorAll('input[name="font"]'), (radio) => radio.value);
   const randomIndex = Math.floor(Math.random() * fonts.length);
   const randomFont = fonts[randomIndex];
   
@@ -3252,18 +3342,57 @@ function applyFontSize(fontSize) {
 // ANIMATIONS FUNCTIONS
 // ============================================
 const ANIMATIONS_KEY = "animationsEnabled";
+const MOTION_PREFERENCES_KEY = "motionPreferences";
+const MOTION_OPTION_NAMES = ["transitions", "panels", "loading", "feedback"];
+const DEFAULT_MOTION_PREFERENCES = Object.freeze({
+  transitions: true,
+  panels: true,
+  loading: true,
+  feedback: true
+});
 
-function applyAnimations(enabled) {
-  if (enabled) {
-    document.body.classList.remove("no-animations");
-  } else {
-    document.body.classList.add("no-animations");
+function loadMotionPreferences() {
+  const savedPreferences = localStorage.getItem(MOTION_PREFERENCES_KEY);
+  if (savedPreferences !== null) {
+    try {
+      const parsedPreferences = JSON.parse(savedPreferences);
+      return Object.fromEntries(MOTION_OPTION_NAMES.map((name) => [
+        name,
+        typeof parsedPreferences[name] === "boolean" ? parsedPreferences[name] : DEFAULT_MOTION_PREFERENCES[name]
+      ]));
+    } catch (error) {
+      console.error("Could not read saved motion preferences:", error);
+      return { ...DEFAULT_MOTION_PREFERENCES };
+    }
   }
-  localStorage.setItem(ANIMATIONS_KEY, enabled ? "true" : "false");
+
+  const legacyEnabled = localStorage.getItem(ANIMATIONS_KEY) !== "false";
+  return Object.fromEntries(MOTION_OPTION_NAMES.map((name) => [name, legacyEnabled]));
 }
 
-function loadAnimations() {
-  return localStorage.getItem(ANIMATIONS_KEY) !== "false";
+function readMotionPreferencesFromSettings() {
+  return Object.fromEntries(MOTION_OPTION_NAMES.map((name) => [
+    name,
+    document.querySelector(`input[name="motionOption"][value="${name}"]`)?.checked === true
+  ]));
+}
+
+function applyMotionPreferences(preferences) {
+  const normalizedPreferences = Object.fromEntries(MOTION_OPTION_NAMES.map((name) => [
+    name,
+    typeof preferences[name] === "boolean" ? preferences[name] : DEFAULT_MOTION_PREFERENCES[name]
+  ]));
+  document.body.classList.toggle("no-motion-transitions", !normalizedPreferences.transitions);
+  document.body.classList.toggle("no-motion-panels", !normalizedPreferences.panels);
+  document.body.classList.toggle("no-motion-loading", !normalizedPreferences.loading);
+  document.body.classList.toggle("no-motion-feedback", !normalizedPreferences.feedback);
+  localStorage.setItem(MOTION_PREFERENCES_KEY, JSON.stringify(normalizedPreferences));
+  localStorage.setItem(ANIMATIONS_KEY, Object.values(normalizedPreferences).every(Boolean) ? "true" : "false");
+}
+
+function applyAnimations(enabled) {
+  const preferences = Object.fromEntries(MOTION_OPTION_NAMES.map((name) => [name, enabled]));
+  applyMotionPreferences(preferences);
 }
 
 // Randomize Font Size Function

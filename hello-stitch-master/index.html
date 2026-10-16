@@ -819,23 +819,37 @@
           </div>
         </div>
 
-        <!-- Animations Toggle Section -->
+        <!-- Motion Preferences -->
         <div class="settings-section settings-section-animations">
-          <h3 class="settings-section-header">🌀 Animations <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <h3 class="settings-section-header">🌀 Motion & Animations <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
             <div class="settings-grid">
               <label class="settings-option">
-                <input type="radio" name="animations" value="enabled" />
-                <div class="animations-preview">✓ Enabled</div>
-                <span>Enabled</span>
+                <input type="checkbox" name="motionOption" value="transitions" />
+                <div class="animations-preview" aria-hidden="true">↔</div>
+                <span>Interface transitions</span>
+                <small>Hover, color, and expand effects</small>
               </label>
               <label class="settings-option">
-                <input type="radio" name="animations" value="disabled" />
-                <div class="animations-preview">✗ Disabled</div>
-                <span>Disabled</span>
+                <input type="checkbox" name="motionOption" value="panels" />
+                <div class="animations-preview" aria-hidden="true">▱</div>
+                <span>Panels & menus</span>
+                <small>Search, Quick Jump, and context menus</small>
+              </label>
+              <label class="settings-option">
+                <input type="checkbox" name="motionOption" value="loading" />
+                <div class="animations-preview" aria-hidden="true">◌</div>
+                <span>Loading indicators</span>
+                <small>Spinner and loading text pulse</small>
+              </label>
+              <label class="settings-option">
+                <input type="checkbox" name="motionOption" value="feedback" />
+                <div class="animations-preview" aria-hidden="true">✦</div>
+                <span>Bookmark & save feedback</span>
+                <small>New-bookmark and unsaved-change pulses</small>
               </label>
             </div>
-            <p class="settings-hint">Enable or disable UI animations and transitions.</p>
+            <p class="settings-hint">Choose which motion effects are active. Turn off every option to disable all animations and transitions.</p>
           </div>
         </div>
         
