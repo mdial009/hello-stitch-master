@@ -34,12 +34,11 @@
     <p id="bookmark-root-folder-error" class="settings-error" aria-live="polite"></p>
   </section>
 
-  <!-- Bookmark Filter Dropdown Container - Fixed at Top Left -->
-  <div id="bookmark-filter-dropdown" class="filter-buttons"></div>
-  
   <div id="header">
     <h1 id="welcome"></h1>
   </div> 
+
+  <div id="bookmark-filter-dropdown" class="filter-buttons" aria-label="Bookmark folder and Work Mode filters"></div>
   
   <div id="search-container">
     <div class="search-bar">
@@ -73,15 +72,17 @@
       </div>
     </div>
     <div class="quick-links">
-      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><img class="quick-link-favicon" alt="" data-url="https://chat.openai.com/" /></button>
-      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><img class="quick-link-favicon" alt="" data-url="https://grok.com/" /></button>
-      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><img class="quick-link-favicon" alt="" data-url="https://www.amazon.com/" /></button>
-      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><img class="quick-link-favicon" alt="" data-url="https://gemini.google.com/" /></button>
-      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><img class="quick-link-favicon" alt="" data-url="https://www.reddit.com/" /></button>
-      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><img class="quick-link-favicon" alt="" data-url="https://www.twitch.tv/" /></button>
-      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><img class="quick-link-favicon" alt="" data-url="https://www.youtube.com/" /></button>
-      <button class="search-button instagram-btn" id="instagram-button" data-tooltip="Open Instagram" aria-label="Open Instagram"><img class="quick-link-favicon" alt="" data-url="https://www.instagram.com/" /></button>
-      <button class="search-button facebook-btn" id="facebook-button" data-tooltip="Open Facebook" aria-label="Open Facebook"><img class="quick-link-favicon" alt="" data-url="https://www.facebook.com/" /></button>
+      <button class="search-button chatgpt-btn" id="chatgpt-button" data-tooltip="Open ChatGPT" aria-label="Open ChatGPT"><img class="quick-link-favicon" alt="" data-url="https://chat.openai.com/" /><span class="quick-link-label">ChatGPT</span></button>
+      <button class="search-button grok-btn" id="grok-button" data-tooltip="Open Grok" aria-label="Open Grok"><img class="quick-link-favicon" alt="" data-url="https://grok.com/" /><span class="quick-link-label">Grok</span></button>
+      <button class="search-button amazon-btn" id="amazon-button" data-tooltip="Open Amazon" aria-label="Open Amazon"><img class="quick-link-favicon" alt="" data-url="https://www.amazon.com/" /><span class="quick-link-label">Amazon</span></button>
+      <button class="search-button gemini-btn" id="gemini-button" data-tooltip="Open Gemini" aria-label="Open Gemini"><img class="quick-link-favicon" alt="" data-url="https://gemini.google.com/" /><span class="quick-link-label">Gemini</span></button>
+      <button class="search-button reddit-btn" id="reddit-button" data-tooltip="Open Reddit" aria-label="Open Reddit"><img class="quick-link-favicon" alt="" data-url="https://www.reddit.com/" /><span class="quick-link-label">Reddit</span></button>
+      <button class="search-button twitch-btn" id="twitch-button" data-tooltip="Open Twitch" aria-label="Open Twitch"><img class="quick-link-favicon" alt="" data-url="https://www.twitch.tv/" /><span class="quick-link-label">Twitch</span></button>
+      <button class="search-button youtube-btn" id="youtube-button" data-tooltip="Open YouTube" aria-label="Open YouTube"><img class="quick-link-favicon" alt="" data-url="https://www.youtube.com/" /><span class="quick-link-label">YouTube</span></button>
+      <button class="search-button instagram-btn" id="instagram-button" data-tooltip="Open Instagram" aria-label="Open Instagram"><img class="quick-link-favicon" alt="" data-url="https://www.instagram.com/" /><span class="quick-link-label">Instagram</span></button>
+      <button class="search-button facebook-btn" id="facebook-button" data-tooltip="Open Facebook" aria-label="Open Facebook"><img class="quick-link-favicon" alt="" data-url="https://www.facebook.com/" /><span class="quick-link-label">Facebook</span></button>
+      <button class="search-button notion-btn" id="notion-button" data-tooltip="Open Notion" aria-label="Open Notion"><img class="quick-link-favicon" alt="" data-url="https://www.notion.so/" /><span class="quick-link-label">Notion</span></button>
+      <button class="search-button claude-btn" id="claude-button" data-tooltip="Open Claude AI" aria-label="Open Claude AI"><img class="quick-link-favicon" alt="" data-url="https://claude.ai/" /><span class="quick-link-label">Claude AI</span></button>
     </div>
     <div class="bookmark-sort-controls" aria-label="Bookmark sorting">
       <span>Sort:</span>
@@ -193,6 +194,20 @@
         <div class="settings-header-actions">
           <button id="settings-info-button" class="small-settings-btn" title="Features" data-tooltip="View features">ℹ️</button>
         </div>
+      </div>
+      <div class="settings-search">
+        <label class="visually-hidden" for="settings-search-input">Search all settings</label>
+        <input
+          type="search"
+          id="settings-search-input"
+          class="settings-input"
+          placeholder="Search all settings..."
+          autocomplete="off"
+          aria-expanded="false"
+          aria-controls="settings-search-results"
+        />
+        <div id="settings-search-results" class="settings-search-results" role="region" aria-label="Settings search results" hidden></div>
+        <p id="settings-search-status" class="visually-hidden" role="status" aria-live="polite"></p>
       </div>
       <div class="settings-content">
         <div class="settings-tab-panel active" id="settings-panel-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" data-tab-panel="appearance">
@@ -847,6 +862,18 @@
             <p id="quicklink-error" class="settings-error"></p>
             <div id="custom-quicklinks-list" class="custom-quicklinks-list" role="list" aria-label="Your custom quick links"></div>
             <p class="settings-hint">Add links to the toolbar, group them by category, drag or use the arrow buttons to reorder, and choose whether each opens in the current or a new tab.</p>
+            <fieldset class="quicklink-visibility-settings">
+              <legend>Built-in shortcuts</legend>
+              <p class="settings-hint">Choose which built-in buttons appear on the page.</p>
+              <div id="quicklink-visibility-options" class="quicklink-visibility-options"></div>
+              <p id="quicklink-visibility-status" class="settings-hint" role="status" aria-live="polite"></p>
+            </fieldset>
+            <label class="settings-quicklink-new-tab" for="most-visited-quicklinks-enabled">
+              <input type="checkbox" id="most-visited-quicklinks-enabled" />
+              Show buttons for my 5 most visited sites
+            </label>
+            <p class="settings-hint">Adds site buttons from your browser history from the last 90 days. History is read locally and is not sent anywhere.</p>
+            <p id="most-visited-quicklinks-status" class="settings-hint" role="status" aria-live="polite"></p>
           </div>
         </div>
 
@@ -1008,26 +1035,58 @@
   </div>
   
   <!-- Features Info Modal -->
-  <div id="features-modal">
-    <div class="features-container">
+  <div id="features-modal" aria-hidden="true">
+    <div class="features-container" role="dialog" aria-modal="true" aria-labelledby="features-title">
       <div class="features-header">
-        <h2>✨ Features</h2>
+        <h2 id="features-title">✨ Features</h2>
         <button id="features-close" class="features-close-btn" data-tooltip="Close">&times;</button>
       </div>
       <div class="features-content">
+        <section class="feature-previews" aria-label="Feature previews">
+          <div class="feature-previews-heading">
+            <h3>See it in action</h3>
+            <span>Visual examples</span>
+          </div>
+          <div class="feature-preview-grid">
+            <article class="feature-preview-card">
+              <h4>Find bookmarks fast</h4>
+              <div class="feature-preview-search" aria-hidden="true">⌕ <span>design</span></div>
+              <div class="feature-preview-bookmark" aria-hidden="true"><span>📁 Design</span><strong>Design inspiration</strong><span>🔖</span></div>
+              <div class="feature-preview-bookmark" aria-hidden="true"><span>📁 Design</span><strong>Product design guide</strong><span>↗</span></div>
+              <p>Search, filter folders, and spot matching titles.</p>
+            </article>
+            <article class="feature-preview-card">
+              <h4>Focus with Work Mode</h4>
+              <div class="feature-preview-work" aria-hidden="true">
+                <span>💼 Work Mode</span><strong>Work Schedule: On</strong><small>Weekdays · 8 AM–4 PM ET</small>
+              </div>
+              <div class="feature-preview-folder" aria-hidden="true">☑ Work <span>12 bookmarks</span></div>
+              <div class="feature-preview-folder" aria-hidden="true">☐ Personal <span>8 bookmarks</span></div>
+              <p>Choose folders and let a schedule filter your view.</p>
+            </article>
+            <article class="feature-preview-card">
+              <h4>Make it yours</h4>
+              <div class="feature-preview-links" aria-hidden="true">
+                <span>✳ ChatGPT</span><span>◉ Notion</span><span>↗ GitHub</span>
+              </div>
+              <div class="feature-preview-theme" aria-hidden="true"><i></i><i></i><i></i><span>Theme · Font · Layout</span></div>
+              <p>Personalize shortcuts, appearance, and layout.</p>
+            </article>
+          </div>
+        </section>
         <div class="features-grid">
           <div class="feature-item">
             <span class="feature-icon">🎨</span>
             <div class="feature-text">
-              <h4>15+ Themes</h4>
-              <p>Customize with themes like Matrix, Ocean, Sunset, Forest, Midnight, Aurora, and more!</p>
+              <h4>56 Themes</h4>
+                <p>Choose from themes including Matrix, Ocean, Sunset, Forest, Midnight, Aurora, and more.</p>
             </div>
           </div>
           <div class="feature-item">
             <span class="feature-icon">🔤</span>
             <div class="feature-text">
-              <h4>10 Font Options</h4>
-              <p>Choose from Buka Bird, Fredoka, Poppins, Roboto, and other fonts.</p>
+              <h4>48 Font Options</h4>
+                <p>Choose from fonts including Fredoka, Poppins, Roboto, and more.</p>
             </div>
           </div>
           <div class="feature-item">
@@ -1048,14 +1107,14 @@
             <span class="feature-icon">🏷️</span>
             <div class="feature-text">
               <h4>AI Auto-Tagging</h4>
-              <p>Bookmarks are automatically tagged based on categories like Development, Video, Social, and more.</p>
+              <p>Bookmarks are automatically categorized using local URL and title patterns, such as Development, Video, and Social.</p>
             </div>
           </div>
           <div class="feature-item">
             <span class="feature-icon">📊</span>
             <div class="feature-text">
               <h4>Sorting Options</h4>
-              <p>Sort by most visited, date added, or alphabetically (A-Z).</p>
+              <p>Sort by visit frequency, date added, title, or the browser's manual bookmark order.</p>
             </div>
           </div>
           <div class="feature-item">
@@ -1083,7 +1142,7 @@
             <span class="feature-icon">🔍</span>
             <div class="feature-text">
               <h4>Search</h4>
-              <p>Quickly search through your bookmarks by title.</p>
+              <p>Search bookmark titles and filter each folder by title, URL, or tag.</p>
             </div>
           </div>
           <div class="feature-item">
@@ -1104,7 +1163,7 @@
             <span class="feature-icon">🔗</span>
             <div class="feature-text">
               <h4>Quick Links</h4>
-              <p>Quick access buttons to ChatGPT, Grok, Reddit, Twitch, and YouTube.</p>
+              <p>Customize built-in and personal shortcuts, show Frequent Sites, and choose which links open in a new tab.</p>
             </div>
           </div>
           <div class="feature-item">
@@ -1157,10 +1216,10 @@
     <button class="context-menu-item context-menu-danger" data-action="delete">🗑️ Delete</button>
   </div>
   
-  <div id="analytics-modal">
-    <div class="analytics-container">
+  <div id="analytics-modal" aria-hidden="true">
+    <div class="analytics-container" role="dialog" aria-modal="true" aria-labelledby="analytics-title">
       <div class="analytics-header">
-        <h2>📊 Bookmark Analytics</h2>
+        <h2 id="analytics-title">📊 Bookmark Analytics</h2>
         <button id="analytics-close" class="analytics-close-btn" data-tooltip="Close">&times;</button>
       </div>
       <div class="analytics-content">
@@ -1175,7 +1234,7 @@
           </div>
           <div class="analytics-card">
             <div class="analytics-value" id="analytics-broken">0</div>
-            <div class="analytics-label">Broken Links</div>
+            <div class="analytics-label">Invalid URLs</div>
           </div>
           <div class="analytics-card">
             <div class="analytics-value" id="analytics-duplicates">0</div>
@@ -1206,6 +1265,7 @@
           <h3>📅 Oldest Bookmarks</h3>
           <div id="analytics-oldest" class="analytics-list"></div>
         </div>
+        <p class="analytics-note">Link health checks URL format and duplicates. It does not contact websites to test whether they are online.</p>
       </div>
     </div>
   </div>

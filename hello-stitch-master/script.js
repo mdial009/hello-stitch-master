@@ -120,6 +120,7 @@ function addToSearchHistory(term) {
       count: 1,
       timestamp: Date.now()
     });
+
   }
   
   // Keep only the last 10 searches
@@ -134,6 +135,8 @@ const pinnedSet = new Set(safeLocalStorageGet(PINS_KEY, [], (value) =>
   Array.isArray(value) && value.every((url) => typeof url === "string")
 ));
 let isShowingPins = false;
+let activeFilterKind = null;
+let activeFilterValue = null;
 const tagsByUrl = safeLocalStorageGet(TAGS_KEY, {}, (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value) &&
   Object.values(value).every((tags) => Array.isArray(tags) && tags.every((tag) => typeof tag === "string"))
@@ -342,6 +345,8 @@ function filterByTag(tag) {
   clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
+  activeFilterKind = "tag";
+  activeFilterValue = tag.toLowerCase();
   const normalizedTag = tag.toLowerCase();
   
   const filteredColumns = columns
@@ -359,6 +364,7 @@ function filterByTag(tag) {
   currentColumns = filteredColumns;
   clearMultiSelect();
   renderCurrent();
+  updateFilterToolbarState();
 }
 
 
@@ -1302,31 +1308,29 @@ document.addEventListener("DOMContentLoaded", function() {
   if (featuresInfoButton && featuresModal) {
     featuresInfoButton.addEventListener("click", function() {
       featuresModal.classList.add("active");
+      featuresModal.setAttribute("aria-hidden", "false");
+      featuresCloseButton?.focus();
     });
   }
 
   // Close features modal
   if (featuresCloseButton && featuresModal) {
-    featuresCloseButton.addEventListener("click", function() {
+    const closeFeatures = function() {
       featuresModal.classList.remove("active");
-    });
-  }
-
-  // Close features modal when clicking outside
-  if (featuresModal) {
+      featuresModal.setAttribute("aria-hidden", "true");
+      featuresInfoButton?.focus();
+    };
+    featuresCloseButton.addEventListener("click", closeFeatures);
     featuresModal.addEventListener("click", function(e) {
-      if (e.target === featuresModal) {
-        featuresModal.classList.remove("active");
+      if (e.target === featuresModal) closeFeatures();
+    });
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" && featuresModal.classList.contains("active")) {
+        e.stopImmediatePropagation();
+        closeFeatures();
       }
     });
   }
-
-  // Close on Escape key
-  document.addEventListener("keydown", function(e) {
-    if (e.key === "Escape" && featuresModal && featuresModal.classList.contains("active")) {
-      featuresModal.classList.remove("active");
-    }
-  });
 
 // Font dropdown functionality - now uses global function
 
@@ -1423,6 +1427,7 @@ document.addEventListener("DOMContentLoaded", function() {
   if (searchInput) {
     searchInput.addEventListener("input", function() {
       if (typeof highlightVisibleBookmarks === "function") highlightVisibleBookmarks(this.value);
+      updateFilterToolbarState();
       debouncedFilterBookmarks();
     });
     searchInput.value = "";
@@ -1452,9 +1457,255 @@ document.addEventListener("DOMContentLoaded", function() {
     { id: "youtube-button", url: "https://www.youtube.com/" },
     { id: "instagram-button", url: "https://www.instagram.com/" },
     { id: "facebook-button", url: "https://www.facebook.com/" },
+    { id: "notion-button", url: "https://www.notion.so/" },
+    { id: "claude-button", url: "https://claude.ai/" },
   ];
 
   const QUICK_LINK_VISITS_KEY = "quickLinkVisits";
+  const MOST_VISITED_QUICKLINKS_KEY = "showMostVisitedQuickLinks";
+  const BUILT_IN_QUICKLINK_VISIBILITY_KEY = "builtInQuickLinkVisibility";
+  const MOST_VISITED_LIMIT = 5;
+  const CUSTOM_QUICKLINK_VISIBLE_LIMIT = 6;
+  const MOST_VISITED_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
+  let mostVisitedSites = [];
+  let mostVisitedRequestId = 0;
+
+  function loadBuiltInQuickLinkVisibility() {
+    const saved = safeLocalStorageGet(BUILT_IN_QUICKLINK_VISIBILITY_KEY, {}, (value) =>
+      value !== null && typeof value === "object" && !Array.isArray(value) &&
+      Object.values(value).every((visible) => typeof visible === "boolean")
+    );
+    return Object.fromEntries(quickLinks.map((link) => [link.id, saved[link.id] !== false]));
+  }
+
+  function applyBuiltInQuickLinkVisibility() {
+    const visibility = loadBuiltInQuickLinkVisibility();
+    quickLinks.forEach(function(link) {
+      const button = document.getElementById(link.id);
+      if (button) button.hidden = !visibility[link.id];
+    });
+  }
+
+  function renderBuiltInQuickLinkVisibilitySettings() {
+    const container = document.getElementById("quicklink-visibility-options");
+    if (!container) return;
+    const visibility = loadBuiltInQuickLinkVisibility();
+    const status = document.getElementById("quicklink-visibility-status");
+    container.replaceChildren();
+    if (status) status.textContent = "Changes apply immediately.";
+
+    quickLinks.forEach(function(link) {
+      const button = document.getElementById(link.id);
+      const labelText = button?.getAttribute("aria-label")?.replace(/^Open\s+/, "") || link.id.replace(/-button$/, "");
+      const label = document.createElement("label");
+      label.className = "quicklink-visibility-option";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = visibility[link.id];
+      checkbox.addEventListener("change", function() {
+        const nextVisibility = loadBuiltInQuickLinkVisibility();
+        nextVisibility[link.id] = checkbox.checked;
+        try {
+          localStorage.setItem(BUILT_IN_QUICKLINK_VISIBILITY_KEY, JSON.stringify(nextVisibility));
+        } catch (error) {
+          console.error("Failed to save built-in quick-link visibility:", error);
+          checkbox.checked = !checkbox.checked;
+          if (status) status.textContent = "Could not save shortcut visibility; the previous setting is unchanged.";
+          return;
+        }
+        applyBuiltInQuickLinkVisibility();
+        if (status) status.textContent = `${labelText} ${checkbox.checked ? "shown" : "hidden"}.`;
+      });
+      label.append(checkbox, document.createTextNode(labelText));
+      container.appendChild(label);
+    });
+  }
+
+  applyBuiltInQuickLinkVisibility();
+
+  function loadMostVisitedPreference() {
+    return safeLocalStorageGet(MOST_VISITED_QUICKLINKS_KEY, false, (value) => typeof value === "boolean");
+  }
+
+  function getMostVisitedSites() {
+    const query = {
+      text: "",
+      startTime: Date.now() - MOST_VISITED_LOOKBACK_MS,
+      maxResults: 1000
+    };
+
+    if (typeof browser !== "undefined" && browser.history && typeof browser.history.search === "function") {
+      return browser.history.search(query);
+    }
+
+    if (typeof chrome !== "undefined" && chrome.history && typeof chrome.history.search === "function") {
+      return new Promise(function(resolve, reject) {
+        chrome.history.search(query, function(results) {
+          const error = chrome.runtime && chrome.runtime.lastError;
+          if (error) {
+            reject(new Error(error.message || "Browser history could not be read."));
+            return;
+          }
+          resolve(results || []);
+        });
+      });
+    }
+
+    return Promise.reject(new Error("Browser history is unavailable."));
+  }
+
+  function getExcludedQuicklinkHosts() {
+    const aliasHosts = [
+      "chatgpt.com", "chat.openai.com", "gemini.google.com", "notion.site",
+      "claude.ai", "amazon.com", "grok.com", "reddit.com", "twitch.tv",
+      "youtube.com", "instagram.com", "facebook.com", "notion.so"
+    ];
+    const urls = quickLinks.map((link) => link.url)
+      .concat(loadCustomQuickLinks().map((link) => link.url))
+      .concat(aliasHosts.map((host) => `https://${host}/`));
+    return new Set(urls.map(function(url) {
+      try {
+        return new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+      } catch (error) {
+        return "";
+      }
+    }).filter(Boolean));
+  }
+
+  function isExcludedQuicklinkHost(host, excludedHosts) {
+    return Array.from(excludedHosts).some((excludedHost) =>
+      host === excludedHost || host.endsWith(`.${excludedHost}`)
+    );
+  }
+
+  function getFriendlySiteName(host) {
+    const knownNames = {
+      "app.ontheclock.com": "OnTheClock",
+      "behavioralhealthsystems.com": "Behavioral Health Systems",
+      "chatgpt.com": "ChatGPT",
+      "github.com": "GitHub",
+      "google.com": "Google",
+      "linkedin.com": "LinkedIn",
+      "microsoft.com": "Microsoft",
+      "netsmart.com": "Netsmart",
+      "notion.so": "Notion",
+      "openai.com": "OpenAI",
+      "reddit.com": "Reddit",
+      "youtube.com": "YouTube"
+    };
+    if (host.includes("behavioralhealth")) return "Behavioral Health";
+    const knownName = Object.entries(knownNames).find(([domain]) =>
+      host === domain || host.endsWith(`.${domain}`)
+    );
+    if (knownName) return knownName[1];
+
+    const labels = host.split(".");
+    const secondLevel = labels[labels.length - 2] || host;
+    const isCountryCodeDomain = /^(co|com|org|net|gov|ac)$/i.test(secondLevel) && labels.length > 2;
+    const domain = isCountryCodeDomain ? labels[labels.length - 3] : secondLevel;
+    return domain
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function renderMostVisitedQuickLinks() {
+    const quickLinksContainer = document.querySelector(".quick-links");
+    if (!quickLinksContainer) return;
+    const existingSection = quickLinksContainer.querySelector(".most-visited-category");
+    if (existingSection) existingSection.remove();
+    if (!loadMostVisitedPreference() || !mostVisitedSites.length) return;
+
+    const excludedHosts = getExcludedQuicklinkHosts();
+    const visibleSites = mostVisitedSites
+      .filter((site) => !isExcludedQuicklinkHost(site.host, excludedHosts))
+      .slice(0, MOST_VISITED_LIMIT);
+    if (!visibleSites.length) return;
+
+    const section = document.createElement("section");
+    section.className = "custom-quicklink-category most-visited-category";
+    section.setAttribute("aria-label", "Frequent sites");
+    const heading = document.createElement("h2");
+    heading.className = "custom-quicklink-category-title";
+    heading.textContent = "Frequent Sites";
+    const group = document.createElement("div");
+    group.className = "custom-quicklink-category-items";
+
+    visibleSites.forEach(function(site) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "search-button quick-link-btn most-visited-quicklink";
+      button.textContent = site.label;
+      button.setAttribute("data-tooltip", `Open ${site.host}`);
+      button.setAttribute("aria-label", `Open ${site.host}`);
+      button.title = site.host;
+      button.addEventListener("click", function() {
+        window.location.href = site.url;
+      });
+      group.appendChild(button);
+    });
+
+    section.append(heading, group);
+    quickLinksContainer.appendChild(section);
+  }
+
+  async function updateMostVisitedQuickLinks() {
+    const status = document.getElementById("most-visited-quicklinks-status");
+    const requestId = ++mostVisitedRequestId;
+    if (!loadMostVisitedPreference()) {
+      mostVisitedSites = [];
+      renderMostVisitedQuickLinks();
+      if (status) status.textContent = "Most visited site buttons are off.";
+      return;
+    }
+
+    if (status) status.textContent = "Finding your most visited sites…";
+    try {
+      const historyItems = await getMostVisitedSites();
+      if (requestId !== mostVisitedRequestId || !loadMostVisitedPreference()) return;
+
+      const excludedHosts = getExcludedQuicklinkHosts();
+      const seenHosts = new Set();
+      mostVisitedSites = (historyItems || [])
+        .filter((item) => item && typeof item.url === "string" && /^https?:/i.test(item.url))
+        .map(function(item) {
+          try {
+            const parsed = new URL(item.url);
+            const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+            return {
+              host,
+              url: `${parsed.protocol}//${parsed.host}/`,
+              visits: Number.isFinite(item.visitCount) ? item.visitCount : 0,
+              lastVisitTime: Number.isFinite(item.lastVisitTime) ? item.lastVisitTime : 0
+            };
+          } catch (error) {
+            return null;
+          }
+        })
+        .filter((site) => site && site.host && !isExcludedQuicklinkHost(site.host, excludedHosts))
+        .sort((a, b) => b.visits - a.visits || b.lastVisitTime - a.lastVisitTime)
+        .filter((site) => {
+          if (seenHosts.has(site.host)) return false;
+          seenHosts.add(site.host);
+          return true;
+        })
+        .slice(0, MOST_VISITED_LIMIT)
+        .map((site) => ({
+          ...site,
+          label: getFriendlySiteName(site.host)
+        }));
+
+      renderMostVisitedQuickLinks();
+      if (status) {
+        status.textContent = mostVisitedSites.length
+          ? `Showing up to ${MOST_VISITED_LIMIT} most-visited sites active within the last 90 days.`
+          : "No eligible sites found in your recent browser history.";
+      }
+    } catch (error) {
+      if (requestId !== mostVisitedRequestId) return;
+      console.error("Failed to read browser history for most-visited quick links:", error);
+      if (status) status.textContent = `Could not load most visited sites: ${error.message}`;
+    }
+  }
 
   function getQuickLinkVisits() {
     return safeLocalStorageGet(QUICK_LINK_VISITS_KEY, {}, (value) =>
@@ -1486,7 +1737,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const sorted = getSortedQuickLinks();
     sorted.forEach(function(link) {
       const btn = document.getElementById(link.id);
-      const firstCustomCategory = container.querySelector(".custom-quicklink-category");
+      const firstCustomCategory = container.querySelector(".most-visited-category, .custom-quicklink-category");
       if (btn) container.insertBefore(btn, firstCustomCategory);
     });
   }
@@ -1519,6 +1770,26 @@ document.addEventListener("DOMContentLoaded", function() {
   // Render custom quick links from settings
   renderCustomQuickLinks();
   renderCustomQuickLinksList();
+  const mostVisitedToggle = document.getElementById("most-visited-quicklinks-enabled");
+  const mostVisitedStatus = document.getElementById("most-visited-quicklinks-status");
+  if (mostVisitedToggle) {
+    mostVisitedToggle.checked = loadMostVisitedPreference();
+    if (mostVisitedStatus && !mostVisitedToggle.checked) {
+      mostVisitedStatus.textContent = "Most visited site buttons are off.";
+    }
+    mostVisitedToggle.addEventListener("change", function() {
+      try {
+        localStorage.setItem(MOST_VISITED_QUICKLINKS_KEY, String(this.checked));
+      } catch (error) {
+        console.error("Failed to save most-visited quick-link setting:", error);
+        this.checked = loadMostVisitedPreference();
+        if (mostVisitedStatus) mostVisitedStatus.textContent = "Could not save this setting; the previous preference is unchanged.";
+        return;
+      }
+      void updateMostVisitedQuickLinks();
+    });
+  }
+  if (loadMostVisitedPreference()) void updateMostVisitedQuickLinks();
 
   document.addEventListener("keydown", function(e) {
     if (e.target.tagName === "INPUT" || e.target.isContentEditable) return;
@@ -1591,6 +1862,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const quickLinksContainer = document.querySelector(".quick-links");
     if (!quickLinksContainer) return;
     quickLinksContainer.querySelectorAll(".custom-quicklink-category").forEach((section) => section.remove());
+    renderMostVisitedQuickLinks();
 
     const groupedLinks = new Map();
     loadCustomQuickLinks().forEach((link) => {
@@ -1599,6 +1871,7 @@ document.addEventListener("DOMContentLoaded", function() {
       groupedLinks.get(category).push(link);
     });
 
+    let renderedLinkCount = 0;
     groupedLinks.forEach((links, category) => {
       const section = document.createElement("section");
       section.className = "custom-quicklink-category";
@@ -1608,11 +1881,16 @@ document.addEventListener("DOMContentLoaded", function() {
       heading.textContent = category;
       const group = document.createElement("div");
       group.className = "custom-quicklink-category-items";
+      let visibleInCategory = 0;
 
       links.forEach((link) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "search-button quick-link-btn quick-link-dynamic";
+        button.hidden = renderedLinkCount >= CUSTOM_QUICKLINK_VISIBLE_LIMIT;
+        button.dataset.quicklinkIndex = String(renderedLinkCount);
+        if (!button.hidden) visibleInCategory += 1;
+        renderedLinkCount += 1;
         button.setAttribute("data-tooltip", `Open ${link.label}${link.newTab ? " in a new tab" : ""}`);
         button.setAttribute("aria-label", `Open ${link.label}${link.newTab ? " in a new tab" : ""}`);
         const icon = document.createElement("span");
@@ -1626,9 +1904,33 @@ document.addEventListener("DOMContentLoaded", function() {
         group.appendChild(button);
       });
 
+      section.hidden = visibleInCategory === 0;
       section.append(heading, group);
       quickLinksContainer.appendChild(section);
     });
+
+    if (renderedLinkCount > CUSTOM_QUICKLINK_VISIBLE_LIMIT) {
+      let expanded = false;
+      const expandButton = document.createElement("button");
+      expandButton.type = "button";
+      expandButton.className = "search-button quick-link-expand-toggle";
+      expandButton.setAttribute("aria-expanded", "false");
+      expandButton.textContent = `Show more links (${renderedLinkCount - CUSTOM_QUICKLINK_VISIBLE_LIMIT})`;
+      expandButton.addEventListener("click", function() {
+        expanded = !expanded;
+        quickLinksContainer.querySelectorAll(".quick-link-dynamic").forEach((button) => {
+          button.hidden = !expanded && Number(button.dataset.quicklinkIndex) >= CUSTOM_QUICKLINK_VISIBLE_LIMIT;
+        });
+        quickLinksContainer.querySelectorAll(".custom-quicklink-category:not(.most-visited-category)").forEach((section) => {
+          section.hidden = !expanded && !section.querySelector(".quick-link-dynamic:not([hidden])");
+        });
+        expandButton.setAttribute("aria-expanded", String(expanded));
+        expandButton.textContent = expanded
+          ? "Show fewer links"
+          : `Show more links (${renderedLinkCount - CUSTOM_QUICKLINK_VISIBLE_LIMIT})`;
+      });
+      quickLinksContainer.appendChild(expandButton);
+    }
   }
 
   function renderCustomQuickLinksList() {
@@ -1716,6 +2018,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!saveCustomQuickLinks(currentLinks)) return;
       renderCustomQuickLinks();
       renderCustomQuickLinksList();
+      renderBuiltInQuickLinkVisibilitySettings();
     });
 
     controls.append(upButton, downButton, removeButton);
@@ -1927,6 +2230,8 @@ function filterBookmarks() {
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const input = document.getElementById("search-input").value.trim().toLowerCase();
+  activeFilterKind = input ? "search" : null;
+  activeFilterValue = input || null;
   const normalizedInput = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   
   // Add to search history if there's meaningful input
@@ -1950,6 +2255,7 @@ function filterBookmarks() {
   currentColumns = filteredColumns;
   clearMultiSelect();
   renderCurrent();
+  updateFilterToolbarState();
 }
 
 function filterBy(category) {
@@ -1957,6 +2263,8 @@ function filterBy(category) {
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
   const cat = category.toLowerCase();
+  activeFilterKind = "folder";
+  activeFilterValue = cat;
   
   // Find the column that matches the folder name directly
   const matchingColumn = columns.find(function(col) { 
@@ -1983,6 +2291,7 @@ function filterBy(category) {
   
   clearMultiSelect();
   renderCurrent();
+  updateFilterToolbarState();
 }
 
 // Search History Management
@@ -2218,6 +2527,8 @@ function filterMostVisited() {
   clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
+  activeFilterKind = "most-visited";
+  activeFilterValue = null;
   const historyAPI = typeof browser !== "undefined" ? browser.history : chrome.history;
   if (historyAPI) {
     historyAPI.search({ text: "", maxResults: 100 }, function(results) {
@@ -2234,6 +2545,7 @@ function filterMostVisited() {
         .filter(function(col) { return col.children.length > 0; });
       clearMultiSelect();
       renderCurrent();
+      updateFilterToolbarState();
     });
   } else {
     resetFilters();
@@ -2245,6 +2557,8 @@ function filterPinned() {
   clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = true;
+  activeFilterKind = "pinned";
+  activeFilterValue = null;
   currentColumns = columns
     .map(function(col) {
       return {
@@ -2255,12 +2569,15 @@ function filterPinned() {
     .filter(function(col) { return col.children.length > 0; });
   clearMultiSelect();
   renderCurrent();
+  updateFilterToolbarState();
 }
 
 function filterJobsOnly() {
   clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
+  activeFilterKind = "jobs";
+  activeFilterValue = null;
   const jobsColumns = columns.filter(function(col) { return col.title.toLowerCase().indexOf("jobs") !== -1; });
   let newColumns = [];
 
@@ -2285,6 +2602,7 @@ function filterJobsOnly() {
   clearMultiSelect();
   renderCurrent();
   document.body.classList.add("jobs-hours-active");
+  updateFilterToolbarState();
 }
 
 function filterJobsOrMostVisited() {
@@ -2307,6 +2625,7 @@ function generateFilterButtons(folders) {
       btn.setAttribute("data-tooltip", config.title);
     }
     btn.textContent = config.text;
+    if (config.ariaPressed !== undefined) btn.setAttribute("aria-pressed", String(config.ariaPressed));
     if (config.clickHandler) btn.addEventListener("click", config.clickHandler);
     return btn;
   }
@@ -2314,10 +2633,12 @@ function generateFilterButtons(folders) {
   function renderFolder(folder, depth = 0) {
     if (folder.children && folder.children.length) {
       const details = document.createElement("details");
+      details.classList.add("folder-filter");
       details.setAttribute("data-depth", depth);
       const summary = document.createElement("summary");
       summary.textContent = folder.title;
       summary.className = "filter-folder-summary";
+      summary.dataset.filterFolder = folder.title.toLowerCase();
       // Add data-depth attribute for CSS-based indentation
       summary.setAttribute("data-depth", depth);
       details.appendChild(summary);
@@ -2328,8 +2649,10 @@ function generateFilterButtons(folders) {
 
       const button = makeBtn({
         text: "Show \"" + folder.title + "\"",
+        extraClasses: ["folder-filter-button"],
         clickHandler: function() { filterBy(folder.title.toLowerCase()); updateCloseAllVisibility(); }
       });
+      button.dataset.filterFolder = folder.title.toLowerCase();
       // Add data-depth attribute to filter-button for indentation
       button.setAttribute("data-depth", depth);
       details.appendChild(button);
@@ -2343,11 +2666,19 @@ function generateFilterButtons(folders) {
     if (rendered) filterButtonsContainer.appendChild(rendered);
   });
 
-  const resetButton = makeBtn({ text: "🔄 Reset", title: "Show all bookmarks", clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
+  const resetButton = makeBtn({ text: "🔄 Reset", title: "Clear search and active filters", extraClasses: ["reset-filter-button"], clickHandler: function() { resetFilters(); updateCloseAllVisibility(); } });
   const closeAllBtn = makeBtn({ id: "close-all-btn", text: "❌ Close All", title: "Collapse all folders", extraClasses: ["close-all-btn"], clickHandler: function() { document.querySelectorAll(".filter-buttons details[open]").forEach(function(d) { d.open = false; }); updateCloseAllVisibility(); } });
   const pinnedButton = makeBtn({ id: "filter-pinned", text: "📌 Pinned", title: "Show only pinned bookmarks", clickHandler: function() { filterPinned(); updateCloseAllVisibility(); } });
   const clearPinsButton = makeBtn({ id: "clear-pins", text: "🗑️ Clear Pins", title: "Remove all pinned bookmarks", clickHandler: function() { clearAllPins(); updateCloseAllVisibility(); } });
-  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Work Mode", title: "Configure work mode settings", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
+  const workModeGroup = document.createElement("details");
+  workModeGroup.className = "work-mode-filter-group";
+  const workModeSummary = document.createElement("summary");
+  workModeSummary.textContent = "💼 Work Mode";
+  workModeSummary.setAttribute("aria-label", "Work Mode controls");
+  workModeGroup.appendChild(workModeSummary);
+  const workModeControls = document.createElement("div");
+  workModeControls.className = "work-mode-filter-controls";
+  const configureWorkModeButton = makeBtn({ id: "configure-work-mode", text: "⚙️ Configure", title: "Configure work mode schedule, hours, and folders", clickHandler: function() { if (typeof showWorkModeModal === "function") showWorkModeModal(columns); } });
   const scheduleWorkModeButton = makeBtn({
     id: "filter-work-mode",
     text: "🗓️ Work Schedule: Off",
@@ -2361,19 +2692,26 @@ function generateFilterButtons(folders) {
     clickHandler: toggleManualWorkMode
   });
 
-  [configureWorkModeButton, scheduleWorkModeButton, manualWorkModeButton, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) {
+  [configureWorkModeButton, scheduleWorkModeButton, manualWorkModeButton].forEach(function(btn) {
+    workModeControls.appendChild(btn);
+  });
+  workModeGroup.appendChild(workModeControls);
+  [workModeGroup, resetButton, clearPinsButton, closeAllBtn].forEach(function(btn) {
     filterButtonsContainer.appendChild(btn);
   });
 
   updateCloseAllVisibility();
   updateClearPinsVisibility();
   updateWorkModeButton();
+  updateFilterToolbarState();
 }
 
 function resetFilters() {
   clearManualWorkModeOverride();
   document.body.classList.remove("work-mode-active");
   isShowingPins = false;
+  activeFilterKind = null;
+  activeFilterValue = null;
   currentColumns = columns;
   clearMultiSelect();
   renderCurrent();
@@ -2381,12 +2719,40 @@ function resetFilters() {
   if (searchInput) searchInput.value = "";
   document.querySelectorAll(".filter-buttons details[open]").forEach(function(d) { d.open = false; });
   document.body.classList.remove("jobs-hours-active");
+  updateFilterToolbarState();
+}
+
+function updateFilterToolbarState() {
+  const toolbar = document.getElementById("bookmark-filter-dropdown");
+  if (!toolbar) return;
+  const searchInput = document.getElementById("search-input");
+  const hasActiveFilter = Boolean(
+    activeFilterKind ||
+    (searchInput && searchInput.value.trim()) ||
+    isShowingPins ||
+    document.body.classList.contains("work-mode-active") ||
+    document.body.classList.contains("jobs-hours-active")
+  );
+  toolbar.classList.toggle("has-active-filter", hasActiveFilter);
+
+  const resetButton = toolbar.querySelector(".reset-filter-button");
+  if (resetButton) {
+    resetButton.classList.toggle("is-active", hasActiveFilter);
+    resetButton.setAttribute("aria-disabled", String(!hasActiveFilter));
+  }
+
+  toolbar.querySelectorAll("[data-filter-folder]").forEach(function(element) {
+    const selected = activeFilterKind === "folder" && element.dataset.filterFolder === activeFilterValue;
+    element.classList.toggle("is-active", selected);
+    element.setAttribute("aria-current", selected ? "true" : "false");
+    if (element.matches("button")) element.setAttribute("aria-pressed", String(selected));
+  });
 }
 
 function updateCloseAllVisibility() {
   const closeAllBtn = document.getElementById("close-all-btn");
   if (!closeAllBtn) return;
-  closeAllBtn.style.display = document.querySelector(".filter-buttons details[open]") ? "inline-block" : "none";
+  closeAllBtn.style.display = document.querySelector(".filter-buttons details.folder-filter[open]") ? "inline-block" : "none";
 }
 
 function updateClearPinsVisibility() {
@@ -2397,7 +2763,7 @@ function updateClearPinsVisibility() {
 }
 
 document.addEventListener("click", function(e) {
-  if (e.target.tagName === "SUMMARY" && e.target.closest(".filter-buttons details")) {
+  if (e.target.tagName === "SUMMARY" && e.target.closest(".filter-buttons details.folder-filter")) {
     setTimeout(updateCloseAllVisibility, 10);
   }
 });
@@ -2615,6 +2981,155 @@ function renderCurrent() {
   if (typeof setupVirtualization === "function") setupVirtualization();
 }
 
+function showAnalytics() {
+  const modal = document.getElementById("analytics-modal");
+  if (!modal) return;
+  initializeAnalyticsModal();
+
+  const allBookmarks = columns.flatMap((column) => column.children || []);
+  const folders = new Set();
+  columns.forEach((column) => {
+    if (column.title && column.title !== "/") folders.add(column.title);
+    (column.children || []).forEach((bookmark) => {
+      (bookmark.path || []).forEach((folder) => folders.add(folder));
+    });
+  });
+
+  const invalidBookmarks = allBookmarks.filter((bookmark) => {
+    if (!bookmark.url || !isSafeBookmarkUrl(bookmark.url)) return true;
+    try {
+      const url = new URL(bookmark.url);
+      return !["http:", "https:"].includes(url.protocol);
+    } catch (error) {
+      return true;
+    }
+  });
+  const duplicateUrls = new Set(
+    allBookmarks.filter((bookmark) => bookmark.isDuplicate).map((bookmark) => normalizeUrl(bookmark.url))
+  );
+  const duplicateCount = allBookmarks.filter((bookmark) => bookmark.isDuplicate).length - duplicateUrls.size;
+  const validCount = Math.max(0, allBookmarks.length - invalidBookmarks.length);
+  const health = allBookmarks.length
+    ? Math.max(0, Math.round(((validCount - duplicateCount) / allBookmarks.length) * 100))
+    : 0;
+
+  const metricValues = {
+    "analytics-total": allBookmarks.length,
+    "analytics-folders": folders.size,
+    "analytics-broken": invalidBookmarks.length,
+    "analytics-duplicates": duplicateCount,
+    "analytics-health": `${health}%`
+  };
+  Object.entries(metricValues).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = String(value);
+  });
+
+  const healthValue = document.getElementById("analytics-health");
+  if (healthValue) {
+    healthValue.classList.remove("health-score-good", "health-score-fair", "health-score-poor");
+    healthValue.classList.add(health >= 80 ? "health-score-good" : health >= 50 ? "health-score-fair" : "health-score-poor");
+  }
+
+  function renderAnalyticsList(id, entries, emptyMessage, formatEntry) {
+    const list = document.getElementById(id);
+    if (!list) return;
+    list.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "analytics-empty";
+      empty.textContent = emptyMessage;
+      list.appendChild(empty);
+      return;
+    }
+
+    entries.forEach((entry) => {
+      const item = document.createElement("div");
+      item.className = "analytics-item";
+      const label = document.createElement("span");
+      label.className = "analytics-item-title";
+      label.textContent = entry.label;
+      const meta = document.createElement("span");
+      meta.className = "analytics-item-meta";
+      meta.textContent = entry.meta;
+      item.append(label, meta);
+      if (formatEntry) formatEntry(item, entry);
+      list.appendChild(item);
+    });
+  }
+
+  const domainCounts = new Map();
+  allBookmarks.forEach((bookmark) => {
+    try {
+      const host = new URL(bookmark.url).hostname.replace(/^www\./i, "");
+      if (host) domainCounts.set(host, (domainCounts.get(host) || 0) + 1);
+    } catch (error) {
+      // Invalid URLs are counted in the health summary, not grouped by domain.
+    }
+  });
+  const topDomains = Array.from(domainCounts, ([label, count]) => ({
+    label,
+    count,
+    meta: `${count} bookmark${count === 1 ? "" : "s"}`
+  }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, 8);
+  renderAnalyticsList("analytics-domains", topDomains, "Add bookmarks to see your top domains.");
+
+  const mostVisited = [...allBookmarks]
+    .sort((a, b) => (bookmarkVisitCounts[normalizeUrl(b.url)] || 0) - (bookmarkVisitCounts[normalizeUrl(a.url)] || 0))
+    .slice(0, 5)
+    .filter((bookmark) => (bookmarkVisitCounts[normalizeUrl(bookmark.url)] || 0) > 0)
+    .map((bookmark) => ({
+      label: bookmark.title || bookmark.url,
+      meta: `${bookmarkVisitCounts[normalizeUrl(bookmark.url)]} visits`
+    }));
+  renderAnalyticsList("analytics-most-visited", mostVisited, "No visit history is available for your bookmarks yet.");
+
+  const datedBookmarks = allBookmarks
+    .filter((bookmark) => Number.isFinite(bookmark.dateAdded) && bookmark.dateAdded > 0)
+    .map((bookmark) => ({
+      label: bookmark.title || bookmark.url,
+      dateAdded: bookmark.dateAdded,
+      meta: new Date(bookmark.dateAdded).toLocaleDateString()
+    }));
+  const recent = [...datedBookmarks].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 5);
+  const oldest = [...datedBookmarks].sort((a, b) => a.dateAdded - b.dateAdded).slice(0, 5);
+  renderAnalyticsList("analytics-recent", recent, "Bookmark dates will appear here when available.");
+  renderAnalyticsList("analytics-oldest", oldest, "Bookmark dates will appear here when available.");
+}
+
+function initializeAnalyticsModal() {
+  const modal = document.getElementById("analytics-modal");
+  const closeButton = document.getElementById("analytics-close");
+  const opener = document.getElementById("settings-analytics-button");
+  if (!modal || !closeButton || modal.dataset.closeHandlersInitialized === "true") return;
+
+  const close = function() {
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+    opener?.focus();
+  };
+  closeButton.addEventListener("click", close);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal.classList.contains("active")) {
+      event.stopImmediatePropagation();
+      close();
+    }
+  });
+  modal.dataset.closeHandlersInitialized = "true";
+  modal.setAttribute("aria-hidden", "true");
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeAnalyticsModal, { once: true });
+} else {
+  initializeAnalyticsModal();
+}
+
 function updatePinIcons() {
   document.querySelectorAll(".pin-btn").forEach(function(btn) {
     const url = btn.getAttribute("data-url");
@@ -2692,6 +3207,8 @@ function applyWorkModeFilter(mode = "scheduled") {
   isShowingPins = false;
   const selected = getSavedWorkModeFolders();
   if (!selected.length) {
+    activeFilterKind = null;
+    activeFilterValue = null;
     currentColumns = columns;
     clearMultiSelect();
     renderCurrent();
@@ -2701,9 +3218,12 @@ function applyWorkModeFilter(mode = "scheduled") {
       manualWorkModeActive = false;
       updateWorkModeButton();
     }
+    updateFilterToolbarState();
     return;
   }
 
+  activeFilterKind = mode === "manual" ? "work-manual" : "work-scheduled";
+  activeFilterValue = null;
   const newColumns = filterWorkModeColumns(columns, selected);
 
   currentColumns = newColumns;
@@ -2712,6 +3232,7 @@ function applyWorkModeFilter(mode = "scheduled") {
   document.body.classList.remove("jobs-hours-active");
   document.body.classList.add("work-mode-active");
   document.body.classList.toggle("work-mode-manual-active", mode === "manual");
+  updateFilterToolbarState();
 }
 
 function autoApplyWorkMode() {
@@ -2727,11 +3248,14 @@ function autoApplyWorkMode() {
   if (scheduleEnabled && withinWorkHours && workModeFolders.length) {
     applyWorkModeFilter("scheduled");
   } else if (document.body.classList.contains("work-mode-active")) {
+    activeFilterKind = null;
+    activeFilterValue = null;
     currentColumns = columns;
     clearMultiSelect();
     renderCurrent();
     document.body.classList.remove("work-mode-active");
     document.body.classList.remove("work-mode-manual-active");
+    updateFilterToolbarState();
   }
 }
 
@@ -3047,6 +3571,10 @@ function initSettingsModal() {
       restoreSettingsSnapshot();
       loadSettingsValues();
     }
+    if (settingsSearchInput) {
+      settingsSearchInput.value = "";
+      updateSettingsSearchResults();
+    }
     clearSettingsChanges();
     settingsModal.classList.remove("active");
     settingsModal.setAttribute("aria-hidden", "true");
@@ -3094,6 +3622,143 @@ function initSettingsModal() {
     return Array.from(settingsModal.querySelectorAll(
       'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )).filter((element) => element.getClientRects().length > 0);
+  }
+
+  const settingsSearchInput = document.getElementById("settings-search-input");
+  const settingsSearchResults = document.getElementById("settings-search-results");
+  const settingsSearchStatus = document.getElementById("settings-search-status");
+
+  function normalizeSettingsSearchText(value) {
+    return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  }
+
+  function updateSettingsSearchResults() {
+    if (!settingsSearchInput || !settingsSearchResults) return;
+    const query = settingsSearchInput.value.trim();
+    settingsSearchResults.replaceChildren();
+    if (!query) {
+      settingsSearchResults.hidden = true;
+      settingsSearchInput.setAttribute("aria-expanded", "false");
+      if (settingsSearchStatus) settingsSearchStatus.textContent = "";
+      return;
+    }
+
+    const terms = normalizeSettingsSearchText(query).split(/\s+/).filter(Boolean);
+    const matches = [];
+    settingsModal.querySelectorAll(".settings-tab-panel .settings-section").forEach((section) => {
+      const panel = section.closest(".settings-tab-panel");
+      const tabName = panel?.dataset.tabPanel;
+      const tab = tabName && settingsModal.querySelector(`.settings-tab[data-tab="${tabName}"]`);
+      const header = section.querySelector(".settings-section-header");
+      if (!tab || !header) return;
+
+      const heading = header.cloneNode(true);
+      heading.querySelectorAll("button").forEach((button) => button.remove());
+      const sectionTitle = heading.textContent.trim();
+      const searchableText = normalizeSettingsSearchText(
+        section.textContent + " " + Array.from(section.querySelectorAll("input, select, textarea"))
+          .map((element) => `${element.getAttribute("placeholder") || ""} ${element.getAttribute("aria-label") || ""}`)
+          .join(" ")
+      );
+      if (!terms.every((term) => searchableText.includes(term))) return;
+
+      const optionLabels = Array.from(section.querySelectorAll(".settings-option"))
+        .filter((option) => {
+          const optionText = normalizeSettingsSearchText(option.textContent);
+          return terms.every((term) => optionText.includes(term));
+        })
+        .map((option) => option.querySelector("span")?.textContent.trim())
+        .filter(Boolean);
+
+      matches.push({ section, tab, sectionTitle, optionLabels });
+    });
+
+    if (!matches.length) {
+      const empty = document.createElement("p");
+      empty.className = "settings-search-empty";
+      empty.textContent = "No matching settings. Try a different keyword.";
+      settingsSearchResults.appendChild(empty);
+    } else {
+      matches.slice(0, 8).forEach((match) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settings-search-result";
+        const category = match.tab.textContent.trim().replace(/^[^\p{L}\p{N}]+\s*/u, "");
+        const title = document.createElement("strong");
+        title.textContent = match.sectionTitle;
+        const detail = document.createElement("span");
+        detail.textContent = `${category}${match.optionLabels.length ? ` · ${match.optionLabels.slice(0, 2).join(", ")}` : ""}`;
+        button.append(title, detail);
+        button.addEventListener("click", function() {
+          match.tab.click();
+          match.section.classList.remove("collapsed");
+
+          const localFilter = match.section.querySelector(
+            "#theme-search-input, #font-search-input, #font-size-search-input"
+          );
+          if (localFilter && match.optionLabels.length) {
+            localFilter.value = match.optionLabels[0];
+            localFilter.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+
+          settingsSearchInput.value = "";
+          updateSettingsSearchResults();
+          requestAnimationFrame(() => {
+            match.section.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (localFilter && match.optionLabels.length) localFilter.focus({ preventScroll: true });
+            else {
+              const sectionHeader = match.section.querySelector(".settings-section-header");
+              if (sectionHeader) {
+                sectionHeader.tabIndex = -1;
+                sectionHeader.focus({ preventScroll: true });
+              }
+            }
+          });
+        });
+        settingsSearchResults.appendChild(button);
+      });
+    }
+
+    settingsSearchResults.hidden = false;
+    settingsSearchInput.setAttribute("aria-expanded", "true");
+    if (settingsSearchStatus) {
+      settingsSearchStatus.textContent = matches.length
+        ? `${matches.length} matching setting section${matches.length === 1 ? "" : "s"}.`
+        : "No matching settings.";
+    }
+  }
+
+  if (settingsSearchInput && settingsSearchResults) {
+    settingsSearchInput.addEventListener("input", updateSettingsSearchResults);
+    settingsSearchInput.addEventListener("keydown", function(event) {
+      const resultButtons = Array.from(settingsSearchResults.querySelectorAll(".settings-search-result"));
+      if (event.key === "ArrowDown" && resultButtons.length) {
+        event.preventDefault();
+        resultButtons[0].focus();
+      } else if (event.key === "Enter" && resultButtons.length) {
+        event.preventDefault();
+        resultButtons[0].click();
+      } else if (event.key === "Escape" && this.value) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.value = "";
+        updateSettingsSearchResults();
+      }
+    });
+    settingsSearchResults.addEventListener("keydown", function(event) {
+      const resultButtons = Array.from(settingsSearchResults.querySelectorAll(".settings-search-result"));
+      const currentIndex = resultButtons.indexOf(document.activeElement);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        resultButtons[(currentIndex + direction + resultButtons.length) % resultButtons.length]?.focus();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        settingsSearchInput.focus();
+        settingsSearchInput.value = "";
+        updateSettingsSearchResults();
+      }
+    });
   }
 
   const settingsInputs = settingsModal.querySelectorAll(
@@ -3488,7 +4153,10 @@ function initSettingsModal() {
     settingsAnalyticsBtn.addEventListener("click", function() {
       const modal = document.getElementById("analytics-modal");
       if (modal) {
+        initializeAnalyticsModal();
         modal.classList.add("active");
+        modal.setAttribute("aria-hidden", "false");
+        document.getElementById("analytics-close")?.focus();
         if (typeof showAnalytics === "function") {
           showAnalytics();
         }
@@ -3665,15 +4333,6 @@ document.addEventListener("DOMContentLoaded", function() {
     randomFontSizeBtn.addEventListener("click", randomizeFontSize);
   }
 
-  const analyticsBtn = document.getElementById("settings-analytics-button");
-  if (analyticsBtn) {
-    analyticsBtn.addEventListener("click", function() {
-      const modal = document.getElementById("analytics-modal");
-      if (modal) {
-        modal.classList.add("active");
-      }
-    });
-  }
 });
 
 // Randomize Theme Function
