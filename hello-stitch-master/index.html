@@ -93,7 +93,7 @@
     <div class="filter-buttons">
       <button id="close-all-btn" class="small-button" data-tooltip="Close all">Close All</button>
       <button id="clear-pins" class="small-button" data-tooltip="Clear pinned">Clear Pins</button>
-      <button id="filter-work-mode" class="small-button" data-tooltip="Filter work mode">Work Mode</button>
+      <button id="filter-work-mode" class="small-button" type="button" aria-pressed="false">💼 Work Mode: Off</button>
     </div>
     <div class="import-export-buttons">
       <button id="settings-button" class="small-button" data-tooltip="Open settings">⚙️ Settings</button>
@@ -115,47 +115,59 @@
     </form>
   </div>
   
-  <div id="workmode-modal">
+  <div id="workmode-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="workmode-title">
     <form id="workmode-form">
-      <h2>Configure Work Mode</h2>
+      <h2 id="workmode-title" tabindex="-1">Work Mode settings</h2>
+      <p class="workmode-intro">Choose when to automatically show your work bookmarks. Times use Eastern Time and adjust for daylight saving.</p>
       <div class="workmode-toggle-container">
         <label class="workmode-toggle">
-          <input type="checkbox" id="workmode-enabled-toggle" />
+          <input type="checkbox" id="workmode-enabled-toggle" aria-describedby="workmode-status-text" />
           <span class="toggle-slider"></span>
+          <span>Enable automatic schedule</span>
         </label>
-        <span id="workmode-status-text">OFF</span>
+        <span id="workmode-status-text" aria-live="polite">Schedule off</span>
       </div>
       <div class="workmode-section">
-        <h3>Work Hours (EST)</h3>
+        <h3>Work hours (Eastern Time)</h3>
         <div class="workhours-config">
           <label>
             Start Time:
-            <input type="time" id="workmode-start-time" value="08:00" />
+            <input type="time" id="workmode-start-time" value="08:00" required />
           </label>
           <label>
             End Time:
-            <input type="time" id="workmode-end-time" value="16:00" />
+            <input type="time" id="workmode-end-time" value="16:00" required />
           </label>
         </div>
-        <div class="workdays-config">
-          <label><input type="checkbox" id="workmode-select-all" /> All</label>
-          <label><input type="checkbox" id="workmode-mon" checked /> Mon</label>
-          <label><input type="checkbox" id="workmode-tue" checked /> Tue</label>
-          <label><input type="checkbox" id="workmode-wed" checked /> Wed</label>
-          <label><input type="checkbox" id="workmode-thu" checked /> Thu</label>
-          <label><input type="checkbox" id="workmode-fri" checked /> Fri</label>
-          <label><input type="checkbox" id="workmode-sat" /> Sat</label>
-          <label><input type="checkbox" id="workmode-sun" /> Sun</label>
-        </div>
-        <p class="workmode-hint">Work mode will automatically turn ON during these hours.</p>
+        <fieldset class="workdays-config">
+          <legend>Active days</legend>
+          <div class="workmode-day-presets">
+            <button type="button" class="workmode-day-preset" data-days-preset="weekdays" aria-pressed="false">Weekdays</button>
+            <button type="button" class="workmode-day-preset" data-days-preset="every-day" aria-pressed="false">Every day</button>
+          </div>
+          <label><input type="checkbox" id="workmode-mon" checked /> Monday</label>
+          <label><input type="checkbox" id="workmode-tue" checked /> Tuesday</label>
+          <label><input type="checkbox" id="workmode-wed" checked /> Wednesday</label>
+          <label><input type="checkbox" id="workmode-thu" checked /> Thursday</label>
+          <label><input type="checkbox" id="workmode-fri" checked /> Friday</label>
+          <label><input type="checkbox" id="workmode-sat" /> Saturday</label>
+          <label><input type="checkbox" id="workmode-sun" /> Sunday</label>
+        </fieldset>
+        <p class="workmode-hint">End time must be later than start time. Overnight schedules aren’t supported.</p>
       </div>
       <div class="workmode-section">
-        <h3>Work Mode Folders</h3>
+        <div class="workmode-folder-heading">
+          <h3>Work folders</h3>
+          <span id="workmode-folder-count" aria-live="polite">0 selected</span>
+        </div>
         <div id="workmode-folder-list"></div>
+        <p id="workmode-empty-folders" class="workmode-empty" hidden>No bookmark folders are available yet.</p>
+        <p id="workmode-summary" class="workmode-summary" aria-live="polite"></p>
+        <p id="workmode-validation-error" class="workmode-validation-error" role="alert" tabindex="-1" hidden></p>
       </div>
       <div class="modal-footer">
-        <button type="button" id="workmode-cancel" data-tooltip="Cancel work mode settings">Cancel</button>
-        <button type="submit" id="workmode-ok" data-tooltip="Save work mode settings">OK</button>
+        <button type="button" id="workmode-cancel">Cancel</button>
+        <button type="submit" id="workmode-ok">Save</button>
       </div>
     </form>
   </div>
@@ -166,11 +178,11 @@
   </div>
   
   <!-- Settings Modal -->
-  <div id="settings-modal">
+  <div id="settings-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="settings-title" tabindex="-1">
     <div class="settings-container">
       <div class="settings-header">
         <div class="settings-header-top">
-          <h2>⚙️ Settings</h2>
+          <h2 id="settings-title">⚙️ Settings</h2>
           <button id="settings-close" class="settings-close-btn" data-tooltip="Close settings">&times;</button>
         </div>
         <div class="settings-tabs" role="tablist" aria-label="Settings categories">
@@ -186,7 +198,7 @@
         <div class="settings-tab-panel active" id="settings-panel-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" data-tab-panel="appearance">
         
          <!-- Custom Title Section -->
-        <div class="settings-section">
+        <div class="settings-section settings-section-title">
           <h3 class="settings-section-header">📝 Custom Title <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
             <input type="text" id="settings-title-input" class="settings-input" placeholder="Enter custom title..." />
@@ -194,22 +206,26 @@
           </div>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section settings-section-privacy">
           <h3 class="settings-section-header">🔒 Favicon Privacy</h3>
           <div class="settings-section-body">
             <div class="settings-field">
               <label for="remote-favicons-enabled"><input type="checkbox" id="remote-favicons-enabled" /> Enable remote favicon lookups</label>
             </div>
-            <p class="settings-hint">When enabled, bookmark hostnames are sent to Google to fetch favicon images. This permission is optional and lookups are off by default.</p>
+            <p class="settings-hint">When enabled, bookmark hostnames are sent to Google to fetch favicon images. This permission is optional and off by default; changes here apply immediately and aren’t reverted when Settings closes.</p>
             <p id="remote-favicons-status" class="settings-hint" aria-live="polite"></p>
           </div>
         </div>
 
          <!-- Theme Selection -->
-         <div class="settings-section">
+         <div class="settings-section settings-section-theme">
            <h3 class="settings-section-header">🎨 Theme <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+           <p class="settings-current-choice" role="status" aria-live="polite">Selected: <strong id="settings-current-theme">Default</strong></p>
            <div class="settings-section-body">
-             <input type="text" id="theme-search-input" class="settings-input" placeholder="Filter themes..." data-tooltip="Filter themes by name" />
+             <div class="settings-option-toolbar">
+               <input type="search" id="theme-search-input" class="settings-input" placeholder="Filter themes..." aria-label="Filter themes" />
+               <button id="random-theme-button" type="button" class="settings-random-btn" title="Randomize theme">🎲 Random</button>
+             </div>
              <div class="settings-grid">
             <label class="settings-option">
               <input type="radio" name="theme" value="default" />
@@ -497,14 +513,18 @@
               <span>Pistachio</span>
             </label>
           </div>
-          <button id="random-theme-button" class="settings-random-btn" title="Randomize theme">🎲 Random</button>
           </div>
         </div>
         
         <!-- Font Selection -->
-        <div class="settings-section">
+        <div class="settings-section settings-section-font">
           <h3 class="settings-section-header">🔤 Font <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <p class="settings-current-choice" role="status" aria-live="polite">Selected: <strong id="settings-current-font">Poppins</strong></p>
           <div class="settings-section-body">
+            <div class="settings-option-toolbar">
+              <input type="search" id="font-search-input" class="settings-input" placeholder="Filter fonts..." aria-label="Filter fonts" />
+              <button id="random-font-button" type="button" class="settings-random-btn" title="Randomize font">🎲 Random</button>
+            </div>
             <div class="settings-grid">
             <label class="settings-option">
               <input type="radio" name="font" value="buka-bird" />
@@ -752,14 +772,18 @@
               <span>Syncopate</span>
             </label>
           </div>
-          <button id="random-font-button" class="settings-random-btn" title="Randomize font">🎲 Random</button>
           </div>
         </div>
 
         <!-- Font Size Selection -->
-        <div class="settings-section">
+        <div class="settings-section settings-section-font-size">
           <h3 class="settings-section-header">📏 Font Size <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
+          <p class="settings-current-choice" role="status" aria-live="polite">Selected: <strong id="settings-current-font-size">20px</strong><span id="settings-font-size-range" class="settings-option-range">Available: 14-24 px</span></p>
           <div class="settings-section-body">
+            <div class="settings-option-toolbar">
+              <input type="search" id="font-size-search-input" class="settings-input" placeholder="Filter sizes (e.g. 18)..." aria-label="Filter font sizes" />
+              <button id="random-font-size-button" type="button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
+            </div>
             <div class="settings-grid font-size-grid">
             <label class="settings-option">
               <input type="radio" name="fontSize" value="14" />
@@ -792,12 +816,11 @@
               <span>24px</span>
             </label>
           </div>
-          <button id="random-font-size-button" class="settings-random-btn" title="Randomize font size">🎲 Random</button>
           </div>
         </div>
 
         <!-- Animations Toggle Section -->
-        <div class="settings-section">
+        <div class="settings-section settings-section-animations">
           <h3 class="settings-section-header">🌀 Animations <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
             <div class="settings-grid">
@@ -816,7 +839,7 @@
           </div>
         </div>
         
-        <div class="settings-section">
+        <div class="settings-section settings-section-quick-links">
           <h3 class="settings-section-header">🔗 Custom Quick Links <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
           <div class="settings-section-body">
             <div class="settings-grid">
@@ -839,7 +862,7 @@
         
          <div class="settings-tab-panel" id="settings-panel-layout" role="tabpanel" aria-labelledby="settings-tab-layout" data-tab-panel="layout">
 
-         <div class="settings-section">
+         <div class="settings-section settings-section-sorting">
            <h3 class="settings-section-header">↕️ Bookmark Sorting <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
            <div class="settings-section-body">
              <div class="settings-field">
@@ -855,7 +878,7 @@
            </div>
          </div>
 
-         <div class="settings-section">
+         <div class="settings-section settings-section-quick-actions">
            <h3 class="settings-section-header">⚡ Quick Actions <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
            <div class="settings-section-body">
              <div class="settings-grid">
@@ -870,7 +893,7 @@
            </div>
          </div>
 
-         <div class="settings-section">
+         <div class="settings-section settings-section-archived">
            <h3 class="settings-section-header">📦 Archived Folders <button type="button" class="settings-collapse-toggle" aria-label="Toggle section">&blacktriangledown;</button></h3>
            <div class="settings-section-body">
              <div id="archived-folders-list" class="settings-archived-list"></div>
@@ -897,8 +920,8 @@
         
       </div>
        <div class="settings-footer">
-          <button id="settings-restore-defaults" class="settings-button settings-button-secondary" data-tooltip="Reset all settings to defaults">↺ Restore Defaults</button>
-          <span id="settings-unsaved-indicator" class="settings-unsaved-indicator" data-tooltip="You have unsaved changes">● Unsaved Changes</span>
+          <button id="settings-restore-defaults" class="settings-button settings-button-secondary" title="Reset title, theme, font, text size, sorting, and animation preferences. Work Mode and bookmark data are preserved." data-tooltip="Reset title, theme, font, text size, sorting, and animations">↺ Reset Preferences</button>
+          <span id="settings-unsaved-indicator" class="settings-unsaved-indicator" role="status" aria-live="polite" data-tooltip="You have unsaved changes">● Unsaved Changes</span>
           <button id="settings-save" class="settings-button" data-tooltip="Save and close settings">💾 Save Settings</button>
         </div>
     </div>

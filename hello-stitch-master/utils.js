@@ -216,6 +216,7 @@ function isValidWorkHoursConfig(value) {
   const validTime = (time) => typeof time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
   const days = value.days;
   return validTime(value.startTime) && validTime(value.endTime) &&
+    value.endTime > value.startTime &&
     !!days && typeof days === "object" && !Array.isArray(days) &&
     ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].every((day) => typeof days[day] === "boolean");
 }
@@ -224,6 +225,29 @@ function getSavedWorkModeFolders() {
   return safeLocalStorageGet("workModeFolders", [], (value) =>
     Array.isArray(value) && value.every((folder) => typeof folder === "string")
   );
+}
+
+function filterWorkModeColumns(columns, selectedFolders) {
+  const seenBookmarks = new Set();
+
+  return selectedFolders.map((selectedPath) => {
+    const bookmarks = [];
+    columns.forEach((column) => {
+      const matches = column.title === selectedPath
+        ? column.children
+        : column.children.filter((bookmark) => (bookmark.path || []).join(" / ") === selectedPath);
+
+      matches.forEach((bookmark) => {
+        const identity = bookmark.id !== undefined && bookmark.id !== null
+          ? `id:${bookmark.id}`
+          : `url:${bookmark.url}|path:${(bookmark.path || []).join(" / ")}`;
+        if (seenBookmarks.has(identity)) return;
+        seenBookmarks.add(identity);
+        bookmarks.push(bookmark);
+      });
+    });
+    return { title: selectedPath, children: bookmarks };
+  }).filter((column) => column.children.length > 0);
 }
 
 function getWorkModeEnabled() {
@@ -435,46 +459,84 @@ function isESTJobsTimeAndWorkday() {
 }
 
 function isWithinWorkHours() {
-  // Get saved work hours config from localStorage using safe parsing
-  const config = safeLocalStorageGet("workHoursConfig", null, isValidWorkHoursConfig);
-  
-  // Default work hours: Mon-Fri 8:00 AM - 4:00 PM EST
-  const defaultConfig = {
-    startTime: "08:00",
-    endTime: "16:00",
-    days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false }
-  };
-  
-  const workConfig = config || defaultConfig;
-  
-  const now = new Date();
-  const estNow = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" })
-  );
-  
-  // Get current day (0 = Sunday, 1 = Monday, etc.)
-  const currentDay = estNow.getDay();
-  const dayMap = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
-  const currentDayKey = dayMap[currentDay];
-  
-  // Check if today is a work day
-  if (!workConfig.days[currentDayKey]) {
+  return isWithinWorkHoursAt(getWorkHoursConfig(), new Date());
+}
+
+function isWithinWorkHoursAt(config, date) {
+  if (!isValidWorkHoursConfig(config) || !(date instanceof Date) || Number.isNaN(date.getTime())) {
     return false;
   }
-  
-  // Parse start and end times
-  const [startHour, startMin] = workConfig.startTime.split(":").map(Number);
-  const [endHour, endMin] = workConfig.endTime.split(":").map(Number);
-  
-  const currentHour = estNow.getHours();
-  const currentMin = estNow.getMinutes();
-  
-  const currentTime = currentHour * 60 + currentMin;
-  const startTime = startHour * 60 + startMin;
-  const endTime = endHour * 60 + endMin;
-  
-  // Check if current time is within work hours
+
+  const values = getEasternDateTimeParts(date);
+  const dayKey = {
+    Mon: "mon",
+    Tue: "tue",
+    Wed: "wed",
+    Thu: "thu",
+    Fri: "fri",
+    Sat: "sat",
+    Sun: "sun"
+  }[values.weekday];
+
+  if (!dayKey || !config.days[dayKey]) return false;
+
+  const currentTime = Number(values.hour) * 60 + Number(values.minute);
+  const [startHour, startMinute] = config.startTime.split(":").map(Number);
+  const [endHour, endMinute] = config.endTime.split(":").map(Number);
+  const startTime = startHour * 60 + startMinute;
+  const endTime = endHour * 60 + endMinute;
+
   return currentTime >= startTime && currentTime < endTime;
+}
+
+function getEasternDateTimeParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function getWorkModeScheduleStatus(enabled, folderCount, config, date = new Date()) {
+  if (!enabled) return "Schedule off";
+  if (folderCount < 1) return "Select at least one work folder";
+  if (!isValidWorkHoursConfig(config)) return "Set valid work hours";
+
+  const hasActiveDays = Object.values(config.days).some(Boolean);
+  if (!hasActiveDays) return "Choose at least one active day";
+
+  const values = getEasternDateTimeParts(date);
+  const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const today = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
+  const todayKey = dayKeys[today.getUTCDay()];
+  const currentTime = Number(values.hour) * 60 + Number(values.minute);
+  const [startHour, startMinute] = config.startTime.split(":").map(Number);
+  const [endHour, endMinute] = config.endTime.split(":").map(Number);
+  const startTime = startHour * 60 + startMinute;
+  const endTime = endHour * 60 + endMinute;
+
+  if (config.days[todayKey] && currentTime >= startTime && currentTime < endTime) {
+    return `Active until ${formatWorkModeTime(config.endTime)} ET`;
+  }
+
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const candidate = new Date(today.getTime() + offset * 86400000);
+    const candidateKey = dayKeys[candidate.getUTCDay()];
+    if (!config.days[candidateKey]) continue;
+    if (offset === 0 && currentTime >= startTime) continue;
+
+    const dayLabel = offset === 0 ? "Today" : dayNames[candidate.getUTCDay()];
+    return `Next active ${dayLabel} at ${formatWorkModeTime(config.startTime)} ET`;
+  }
+
+  return "No upcoming active days";
 }
 
 function getWorkHoursConfig() {
@@ -485,17 +547,34 @@ function getWorkHoursConfig() {
   }, isValidWorkHoursConfig);
 }
 
+function formatWorkModeTime(value) {
+  if (!value) return "—";
+  const [hours, minutes] = value.split(":").map(Number);
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function showWorkModeModal(columns) {
   const modal = document.getElementById("workmode-modal");
   const folderList = document.getElementById("workmode-folder-list");
   if (!modal || !folderList || !columns) return;
   folderList.innerHTML = "";
 
-  // Initialize the toggle with current work mode state
+  // Initialize the schedule controls with saved settings.
   const workModeToggle = document.getElementById("workmode-enabled-toggle");
   const workModeStatusText = document.getElementById("workmode-status-text");
   const startTimeInput = document.getElementById("workmode-start-time");
   const endTimeInput = document.getElementById("workmode-end-time");
+  const dayPresetButtons = Array.from(modal.querySelectorAll("[data-days-preset]"));
+  const folderSelectAllCheckbox = document.createElement("input");
+  const folderCount = document.getElementById("workmode-folder-count");
+  const emptyFoldersMessage = document.getElementById("workmode-empty-folders");
+  const summary = document.getElementById("workmode-summary");
+  const validationError = document.getElementById("workmode-validation-error");
+  const form = document.getElementById("workmode-form");
+  const opener = document.activeElement;
   const dayCheckboxIds = [
     "workmode-mon",
     "workmode-tue",
@@ -507,7 +586,6 @@ function showWorkModeModal(columns) {
   ];
   const workModeEnabled = getWorkModeEnabled();
   const workHoursConfig = getWorkHoursConfig();
-  const sections = Array.from(modal.querySelectorAll(".workmode-section"));
 
   function getDayCheckboxes() {
     return dayCheckboxIds
@@ -516,67 +594,109 @@ function showWorkModeModal(columns) {
   }
 
   function getFolderCheckboxes() {
-    return Array.from(
-      folderList.querySelectorAll('input[type="checkbox"]:not(#workmode-select-all)')
-    );
+    return Array.from(folderList.querySelectorAll('input[type="checkbox"]:not(#workmode-folders-select-all)'));
   }
 
-  function setWorkModeEnabledState(enabled) {
-    if (workModeToggle) workModeToggle.checked = enabled;
-    if (workModeStatusText) {
-      workModeStatusText.textContent = enabled ? "ON" : "OFF";
-      workModeStatusText.classList.toggle("active", enabled);
+  if (workModeToggle) workModeToggle.checked = workModeEnabled;
+  if (startTimeInput) startTimeInput.value = workHoursConfig.startTime;
+  if (endTimeInput) endTimeInput.value = workHoursConfig.endTime;
+  getDayCheckboxes().forEach((checkbox) => {
+    checkbox.checked = workHoursConfig.days[checkbox.id.replace("workmode-", "")];
+  });
+
+  function updateDaySelectAllState() {
+    const boxes = getDayCheckboxes();
+    const weekdays = boxes.filter((checkbox) => !["workmode-sat", "workmode-sun"].includes(checkbox.id));
+    const everyDay = boxes.length > 0 && boxes.every((checkbox) => checkbox.checked);
+    const weekdaysSelected = weekdays.length > 0 && weekdays.every((checkbox) => checkbox.checked) &&
+      boxes.filter((checkbox) => ["workmode-sat", "workmode-sun"].includes(checkbox.id)).every((checkbox) => !checkbox.checked);
+    dayPresetButtons.forEach((button) => {
+      const selected = button.dataset.daysPreset === "every-day" ? everyDay : weekdaysSelected;
+      button.setAttribute("aria-pressed", String(selected));
+    });
+  }
+
+  function updateFolderSelectAllState() {
+    const boxes = getFolderCheckboxes();
+    folderSelectAllCheckbox.checked = boxes.length > 0 && boxes.every((checkbox) => checkbox.checked);
+    folderSelectAllCheckbox.indeterminate = boxes.some((checkbox) => checkbox.checked) && !folderSelectAllCheckbox.checked;
+  }
+
+  function updateSummary() {
+    const selectedFolders = getFolderCheckboxes().filter((checkbox) => checkbox.checked).length;
+    const dayCheckboxes = getDayCheckboxes();
+    const selectedDays = dayCheckboxes.filter((checkbox) => checkbox.checked);
+    const weekdays = dayCheckboxes.filter((checkbox) => !["workmode-sat", "workmode-sun"].includes(checkbox.id));
+    let daySummary = "No days selected";
+    if (selectedDays.length === dayCheckboxes.length) {
+      daySummary = "Every day";
+    } else if (weekdays.every((checkbox) => checkbox.checked) &&
+      dayCheckboxes.filter((checkbox) => ["workmode-sat", "workmode-sun"].includes(checkbox.id)).every((checkbox) => !checkbox.checked)) {
+      daySummary = "Weekdays";
+    } else if (selectedDays.length) {
+      daySummary = selectedDays.map((checkbox) => checkbox.labels[0].textContent.trim().slice(0, 3)).join(", ");
     }
-
-    sections.forEach((section) => {
-      section.style.display = enabled ? "" : "none";
-    });
-
-    const controls = [startTimeInput, endTimeInput, ...getDayCheckboxes(), document.getElementById("workmode-select-all")];
-    controls.filter(Boolean).forEach((control) => {
-      control.disabled = !enabled;
-    });
-    getFolderCheckboxes().forEach((checkbox) => {
-      checkbox.disabled = !enabled;
-    });
-  }
-
-  function resetWorkModeForm() {
-    const defaultConfig = getWorkHoursConfig();
-    if (startTimeInput) startTimeInput.value = defaultConfig.startTime;
-    if (endTimeInput) endTimeInput.value = defaultConfig.endTime;
-    getDayCheckboxes().forEach((checkbox) => {
-      checkbox.checked = defaultConfig.days[checkbox.id.replace("workmode-", "")];
-    });
-    getFolderCheckboxes().forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-    const selectAllCheckbox = document.getElementById("workmode-select-all");
-    if (selectAllCheckbox) {
-      selectAllCheckbox.checked = false;
-      selectAllCheckbox.indeterminate = false;
-    }
-  }
-
-  setWorkModeEnabledState(workModeEnabled);
-
-  if (workModeToggle) {
-    workModeToggle.onchange = function () {
-      const enabled = this.checked;
-      if (enabled) {
-        resetWorkModeForm();
-      }
-      setWorkModeEnabledState(enabled);
+    const folderSummary = selectedFolders === 1 ? "1 folder" : `${selectedFolders} folders`;
+    const config = {
+      startTime: startTimeInput.value,
+      endTime: endTimeInput.value,
+      days: Object.fromEntries(dayCheckboxes.map((checkbox) => [
+        checkbox.id.replace("workmode-", ""),
+        checkbox.checked
+      ]))
     };
+
+    if (folderCount) folderCount.textContent = `${selectedFolders} selected`;
+    if (summary) {
+      summary.textContent = `${daySummary} · ${formatWorkModeTime(startTimeInput.value)}–${formatWorkModeTime(endTimeInput.value)} ET · ${folderSummary}`;
+    }
+    if (workModeStatusText) {
+      const scheduleStatus = getWorkModeScheduleStatus(
+        workModeToggle.checked,
+        selectedFolders,
+        config
+      );
+      const needsSetup = [
+        "Select at least one work folder",
+        "Set valid work hours",
+        "Choose at least one active day"
+      ].includes(scheduleStatus);
+      workModeStatusText.textContent = needsSetup ? "Setup required" : scheduleStatus;
+      workModeStatusText.classList.toggle("needs-setup", needsSetup);
+      workModeStatusText.classList.toggle("active", scheduleStatus.startsWith("Active until"));
+    }
+    if (validationError) {
+      if (!workModeToggle.checked) {
+        validationError.textContent = "";
+        validationError.hidden = true;
+      } else if (selectedFolders === 0) {
+        validationError.textContent = uniqueFolders.length
+          ? "Select at least one work folder to enable the schedule."
+          : "Add a bookmark folder before enabling the schedule.";
+        validationError.hidden = false;
+      } else if (selectedDays.length === 0) {
+        validationError.textContent = "Choose at least one active day to enable the schedule.";
+        validationError.hidden = false;
+      } else {
+        validationError.textContent = "";
+        validationError.hidden = true;
+      }
+    }
   }
 
-  // Load saved work hours config into the form when work mode is on
-  if (workModeEnabled) {
-    if (startTimeInput) startTimeInput.value = workHoursConfig.startTime;
-    if (endTimeInput) endTimeInput.value = workHoursConfig.endTime;
-    getDayCheckboxes().forEach((checkbox) => {
-      checkbox.checked = workHoursConfig.days[checkbox.id.replace("workmode-", "")];
-    });
+  function validateTimeRange() {
+    const valid = startTimeInput.value && endTimeInput.value && endTimeInput.value > startTimeInput.value;
+    endTimeInput.setCustomValidity(valid ? "" : "End time must be later than start time.");
+    return valid;
+  }
+
+  if (workModeStatusText) {
+    workModeStatusText.textContent = workModeEnabled ? "Schedule on" : "Schedule off";
+  }
+  if (workModeToggle) {
+    workModeToggle.onchange = () => {
+      updateSummary();
+    };
   }
 
   const allFolders = [];
@@ -604,46 +724,29 @@ function showWorkModeModal(columns) {
   const saved = getSavedWorkModeFolders();
 
   const selectAllLabel = document.createElement("label");
-  selectAllLabel.style.display = "flex";
-  selectAllLabel.style.alignItems = "center";
-  selectAllLabel.style.gap = "0.5em";
-  selectAllLabel.style.fontWeight = "bold";
-  const selectAllCheckbox = document.createElement("input");
-  selectAllCheckbox.type = "checkbox";
-  selectAllCheckbox.id = "workmode-select-all";
-  selectAllLabel.appendChild(selectAllCheckbox);
-  selectAllLabel.appendChild(document.createTextNode("Select All"));
+  selectAllLabel.className = "workmode-select-all";
+  folderSelectAllCheckbox.type = "checkbox";
+  folderSelectAllCheckbox.id = "workmode-folders-select-all";
+  selectAllLabel.appendChild(folderSelectAllCheckbox);
+  selectAllLabel.appendChild(document.createTextNode("Select all folders"));
   folderList.appendChild(selectAllLabel);
 
   uniqueFolders.forEach((folder) => {
     const label = document.createElement("label");
-    label.style.display = "flex";
-    label.style.alignItems = "center";
-    label.style.gap = "0.5em";
-    label.style.paddingLeft = "0";
-    
-    // Calculate depth based on path separators
+    label.className = "workmode-folder-option";
     const depth = folder.path.split(" / ").length - 1;
-    const indentPx = depth * 20;
-    label.style.paddingLeft = indentPx + "px";
-    
-    // Add visual hierarchy indicator
+    label.style.setProperty("--folder-depth", Math.min(depth, 4));
+    label.title = folder.path;
+
     const indicator = document.createElement("span");
-    indicator.style.marginRight = "0.3em";
-    indicator.style.color = "#888";
-    indicator.style.fontSize = "0.9em";
-    
-    if (depth === 0) {
-      indicator.textContent = "📁"; // Root folder
-    } else {
-      // Add arrow indicators for nested folders
-      indicator.textContent = "├──".slice(0, 2 * depth) + "📁";
-      indicator.style.fontSize = "0.8em";
-    }
+    indicator.className = "workmode-folder-icon";
+    indicator.setAttribute("aria-hidden", "true");
+    indicator.textContent = "📁";
     
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = folder.path;
+    checkbox.setAttribute("aria-label", `Include ${folder.path}`);
     if (saved.includes(folder.path)) checkbox.checked = true;
     
     label.appendChild(indicator);
@@ -652,79 +755,127 @@ function showWorkModeModal(columns) {
     folderList.appendChild(label);
   });
 
-  const allFolderCheckboxes = () =>
-    Array.from(
-      folderList.querySelectorAll(
-        'input[type="checkbox"]:not(#workmode-select-all)'
-      )
-    );
+  if (emptyFoldersMessage) emptyFoldersMessage.hidden = uniqueFolders.length > 0;
+  folderSelectAllCheckbox.disabled = uniqueFolders.length === 0;
 
-  function updateSelectAllState() {
-    const boxes = allFolderCheckboxes();
-    selectAllCheckbox.checked = boxes.every((cb) => cb.checked);
-    selectAllCheckbox.indeterminate =
-      !selectAllCheckbox.checked && boxes.some((cb) => cb.checked);
-  }
-  updateSelectAllState();
-
-  selectAllCheckbox.addEventListener("change", () => {
-    allFolderCheckboxes().forEach((cb) => {
-      cb.checked = selectAllCheckbox.checked;
+  folderSelectAllCheckbox.onchange = () => {
+    getFolderCheckboxes().forEach((checkbox) => {
+      checkbox.checked = folderSelectAllCheckbox.checked;
     });
-  });
+    updateFolderSelectAllState();
+    updateSummary();
+  };
 
-  folderList.addEventListener("change", (e) => {
-    if (e.target !== selectAllCheckbox) updateSelectAllState();
-  });
+  folderList.onchange = (event) => {
+    if (event.target !== folderSelectAllCheckbox) updateFolderSelectAllState();
+    updateSummary();
+  };
 
-  // Ensure folder checkboxes respect the current enabled state after they are created
-  setWorkModeEnabledState(workModeEnabled);
+  dayPresetButtons.forEach((button) => {
+    button.onclick = () => {
+      const preset = button.dataset.daysPreset;
+      getDayCheckboxes().forEach((checkbox) => {
+        checkbox.checked = preset === "every-day" ||
+          (preset === "weekdays" && !["workmode-sat", "workmode-sun"].includes(checkbox.id));
+      });
+      updateDaySelectAllState();
+      updateSummary();
+    };
+  });
+  getDayCheckboxes().forEach((checkbox) => {
+    checkbox.onchange = () => {
+      updateDaySelectAllState();
+      updateSummary();
+    };
+  });
+  [startTimeInput, endTimeInput].forEach((input) => {
+    input.oninput = () => {
+      validateTimeRange();
+      updateSummary();
+    };
+  });
+  updateDaySelectAllState();
+  updateFolderSelectAllState();
+  validateTimeRange();
+  updateSummary();
 
   modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  form.scrollTop = 0;
+  document.getElementById("workmode-title").focus({ preventScroll: true });
+  form.scrollTop = 0;
 
-  document.getElementById("workmode-cancel").onclick = () => {
+  let statusIntervalId;
+  const closeModal = () => {
     modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+    if (statusIntervalId) clearInterval(statusIntervalId);
+    if (opener && typeof opener.focus === "function") opener.focus();
   };
 
-  document.getElementById("workmode-form").onsubmit = (e) => {
-    e.preventDefault();
-    
-    const workModeToggleEl = document.getElementById("workmode-enabled-toggle");
-    const enabled = workModeToggleEl ? workModeToggleEl.checked : false;
-    localStorage.setItem("workModeEnabled", enabled);
-
-    if (enabled) {
-      const newStartTime = document.getElementById("workmode-start-time").value;
-      const newEndTime = document.getElementById("workmode-end-time").value;
-      const newWorkHoursConfig = {
-        startTime: newStartTime,
-        endTime: newEndTime,
-        days: {
-          mon: document.getElementById("workmode-mon").checked,
-          tue: document.getElementById("workmode-tue").checked,
-          wed: document.getElementById("workmode-wed").checked,
-          thu: document.getElementById("workmode-thu").checked,
-          fri: document.getElementById("workmode-fri").checked,
-          sat: document.getElementById("workmode-sat").checked,
-          sun: document.getElementById("workmode-sun").checked
-        }
-      };
-      localStorage.setItem("workHoursConfig", JSON.stringify(newWorkHoursConfig));
-
-      const checked = allFolderCheckboxes()
-        .filter((cb) => cb.checked)
-        .map((cb) => cb.value);
-      localStorage.setItem("workModeFolders", JSON.stringify(checked));
-    } else {
-      localStorage.setItem("workModeFolders", JSON.stringify([]));
-      localStorage.setItem("workHoursConfig", JSON.stringify(getWorkHoursConfig()));
+  form.onkeydown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeModal();
+      return;
     }
-    
-    modal.classList.remove("active");
-    if (typeof applyWorkModeFilter === "function") applyWorkModeFilter();
-    if (typeof autoApplyWorkMode === "function") autoApplyWorkMode();
+    if (event.key !== "Tab") return;
+
+    const focusableElements = Array.from(form.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => element.getClientRects().length > 0);
+    if (!focusableElements.length) {
+      event.preventDefault();
+      form.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    if (event.shiftKey && (document.activeElement === firstElement || !form.contains(document.activeElement))) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && (document.activeElement === lastElement || !form.contains(document.activeElement))) {
+      event.preventDefault();
+      firstElement.focus();
+    }
   };
-  }
+
+  document.getElementById("workmode-cancel").onclick = closeModal;
+  statusIntervalId = setInterval(updateSummary, 60000);
+
+  form.onsubmit = (event) => {
+    event.preventDefault();
+    validateTimeRange();
+    updateSummary();
+    if (!form.reportValidity()) return;
+    if (!validationError.hidden) {
+      validationError.focus();
+      return;
+    }
+
+    const enabled = workModeToggle.checked;
+    const newWorkHoursConfig = {
+      startTime: startTimeInput.value,
+      endTime: endTimeInput.value,
+      days: Object.fromEntries(getDayCheckboxes().map((checkbox) => [
+        checkbox.id.replace("workmode-", ""),
+        checkbox.checked
+      ]))
+    };
+    const checkedFolders = getFolderCheckboxes()
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
+
+    localStorage.setItem("workModeEnabled", JSON.stringify(enabled));
+    localStorage.setItem("workHoursConfig", JSON.stringify(newWorkHoursConfig));
+    localStorage.setItem("workModeFolders", JSON.stringify(checkedFolders));
+
+    closeModal();
+    if (typeof autoApplyWorkMode === "function") autoApplyWorkMode();
+    if (typeof updateWorkModeButton === "function") updateWorkModeButton();
+  };
+}
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
@@ -746,11 +897,14 @@ function showWorkModeModal(columns) {
       isUSWorkdayEST,
       isESTJobsTimeAndWorkday,
       isWithinWorkHours,
+      isWithinWorkHoursAt,
+      getWorkModeScheduleStatus,
       getWorkHoursConfig,
       validateBookmarkImport,
       parseBookmarkBackup,
       isValidWorkHoursConfig,
       getSavedWorkModeFolders,
+      filterWorkModeColumns,
       getWorkModeEnabled,
       showWorkModeModal,
     };

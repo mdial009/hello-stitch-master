@@ -11,6 +11,9 @@ const {
   validateBookmarkImport,
   parseBookmarkBackup,
   isValidWorkHoursConfig,
+  isWithinWorkHoursAt,
+  getWorkModeScheduleStatus,
+  filterWorkModeColumns,
 } = require('../utils');
 
 // normalizeUrl
@@ -111,6 +114,69 @@ assert.strictEqual(isValidWorkHoursConfig({
   days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
 }), true);
 assert.strictEqual(isValidWorkHoursConfig({ startTime: '25:00', endTime: '16:00', days: {} }), false);
+assert.strictEqual(isValidWorkHoursConfig({
+  startTime: '16:00',
+  endTime: '08:00',
+  days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
+}), false);
+assert.strictEqual(isValidWorkHoursConfig({
+  startTime: '08:00',
+  endTime: '08:00',
+  days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
+}), false);
+
+const easternWeekdays = {
+  mon: true,
+  tue: true,
+  wed: true,
+  thu: true,
+  fri: true,
+  sat: false,
+  sun: false,
+};
+const easternHours = { startTime: '08:00', endTime: '16:00', days: easternWeekdays };
+assert.strictEqual(isWithinWorkHoursAt(easternHours, new Date('2026-10-15T12:00:00Z')), true);
+assert.strictEqual(isWithinWorkHoursAt(easternHours, new Date('2026-10-15T11:59:00Z')), false);
+assert.strictEqual(isWithinWorkHoursAt(easternHours, new Date('2026-10-15T20:00:00Z')), false);
+assert.strictEqual(isWithinWorkHoursAt(easternHours, new Date('2026-01-15T13:00:00Z')), true);
+assert.strictEqual(isWithinWorkHoursAt(easternHours, new Date('2026-10-16T19:59:00Z')), true);
+assert.strictEqual(isWithinWorkHoursAt({
+  ...easternHours,
+  days: { ...easternWeekdays, fri: false },
+}, new Date('2026-10-16T19:59:00Z')), false);
+assert.strictEqual(
+  getWorkModeScheduleStatus(true, 0, easternHours, new Date('2026-10-15T12:00:00Z')),
+  'Select at least one work folder'
+);
+assert.strictEqual(
+  getWorkModeScheduleStatus(true, 1, { ...easternHours, days: Object.fromEntries(Object.keys(easternWeekdays).map((day) => [day, false])) }, new Date('2026-10-15T12:00:00Z')),
+  'Choose at least one active day'
+);
+assert.strictEqual(
+  getWorkModeScheduleStatus(true, 1, easternHours, new Date('2026-10-15T12:00:00Z')),
+  'Active until 4:00 PM ET'
+);
+assert.strictEqual(
+  getWorkModeScheduleStatus(true, 1, easternHours, new Date('2026-10-15T11:00:00Z')),
+  'Next active Today at 8:00 AM ET'
+);
+assert.strictEqual(
+  getWorkModeScheduleStatus(true, 1, easternHours, new Date('2026-10-15T21:00:00Z')),
+  'Next active Friday at 8:00 AM ET'
+);
+
+const parentBookmark = { id: 'bookmark-1', title: 'Project', url: 'https://example.com', path: ['Work', 'Projects'] };
+const distinctDuplicateUrl = { id: 'bookmark-2', title: 'Project copy', url: 'https://example.com', path: ['Work'] };
+assert.deepStrictEqual(
+  filterWorkModeColumns([
+    { title: 'Work', children: [parentBookmark, distinctDuplicateUrl] },
+    { title: 'Personal', children: [{ id: 'bookmark-3', title: 'Other', url: 'https://other.example', path: ['Personal'] }] },
+  ], ['Work', 'Work / Projects']).map((column) => ({
+    title: column.title,
+    ids: column.children.map((bookmark) => bookmark.id),
+  })),
+  [{ title: 'Work', ids: ['bookmark-1', 'bookmark-2'] }]
+);
 
 // isESTJobsTimeAndWorkday can't be reliably asserted without mocking date, but ensure it returns a boolean
 assert.strictEqual(typeof isESTJobsTimeAndWorkday(), 'boolean');

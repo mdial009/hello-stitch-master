@@ -4304,9 +4304,9 @@ body.theme-forest .filter-buttons details details {
   background: #1a1a24;
   border-radius: 12px;
   border: 2px solid #ff9900;
-  max-width: 860px;
+  max-width: 1120px;
   width: calc(100% - 2rem);
-  max-height: min(88vh, 900px);
+  max-height: min(92vh, 1100px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -8565,6 +8565,125 @@ body.compact-mode .bookmark-folder-title {
   gap: 0.75rem;
 }
 
+.settings-tab-panel.active[data-tab-panel="appearance"],
+.settings-tab-panel.active[data-tab-panel="layout"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 1rem;
+}
+
+.settings-tab-panel.active[data-tab-panel="data"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.settings-tab-panel .settings-section {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+}
+
+.settings-section-theme,
+.settings-section-font,
+.settings-section-quick-links,
+.settings-section-quick-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-section-theme .settings-grid {
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 0.6rem;
+  padding: 0.25rem;
+}
+
+.settings-current-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.75rem;
+  margin: -0.25rem 0 0.75rem;
+  color: #aeb4c0;
+  font-size: 0.88rem;
+}
+
+.settings-current-choice strong {
+  color: #f1f3f7;
+  font-weight: 700;
+}
+
+.settings-option-range {
+  margin-left: auto;
+  color: #aeb4c0;
+  font-size: 0.82rem;
+}
+
+.settings-section-font .settings-grid {
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 0.6rem;
+  padding: 0.25rem;
+}
+
+.settings-option-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.settings-option-toolbar .settings-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.settings-option-toolbar .settings-random-btn {
+  flex: 0 0 auto;
+  min-height: 42px;
+  margin: 0;
+}
+
+.settings-option[hidden] {
+  display: none;
+}
+
+.settings-section-theme .settings-option,
+.settings-section-font .settings-option {
+  min-height: 82px;
+  padding: 0.55rem;
+}
+
+.settings-section-font-size .settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  gap: 0.5rem;
+}
+
+.settings-section-animations .settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.settings-section-quick-actions .settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.settings-section-quick-actions .settings-button {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.settings-data-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.settings-data-actions .settings-button {
+  min-height: 3rem;
+  margin: 0;
+}
+
 .settings-hint {
   color: #aeb4c0;
   font-size: 0.84rem;
@@ -8659,6 +8778,46 @@ body.compact-mode .bookmark-folder-title {
     padding: 0.75rem;
   }
 
+  .settings-tab-panel.active[data-tab-panel="appearance"],
+  .settings-tab-panel.active[data-tab-panel="layout"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .settings-section-theme,
+  .settings-section-font,
+  .settings-section-quick-links,
+  .settings-section-quick-actions {
+    grid-column: auto;
+  }
+
+  .settings-current-choice {
+    flex-wrap: wrap;
+  }
+
+  .settings-option-range {
+    margin-left: 0.25rem;
+  }
+
+  .settings-section-theme .settings-grid,
+  .settings-section-font .settings-grid {
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+  }
+
+  .settings-option-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .settings-option-toolbar .settings-random-btn {
+    align-self: flex-start;
+  }
+
+  .settings-data-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .settings-section {
     padding: 0.85rem;
   }
@@ -8684,5 +8843,286 @@ body.compact-mode .bookmark-folder-title {
     flex-basis: 100%;
     margin: 0;
     justify-content: center;
+  }
+}
+
+#workmode-modal form {
+  box-sizing: border-box;
+  width: min(92vw, 600px);
+  max-height: min(92vh, 840px);
+  padding: clamp(1rem, 4vw, 2rem);
+  padding-bottom: 1.5rem;
+  scroll-padding-bottom: 7rem;
+}
+
+#workmode-modal #workmode-title:focus {
+  outline: none;
+}
+
+#workmode-modal .workmode-intro {
+  margin: -0.5rem 0 1.25rem;
+  line-height: 1.5;
+  color: #e0e0e0;
+  opacity: 0.9;
+}
+
+#workmode-modal .workmode-toggle-container {
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+#workmode-modal .workmode-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: auto;
+  min-height: 28px;
+  padding-left: 62px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#workmode-modal .workmode-toggle .toggle-slider {
+  right: auto;
+  bottom: auto;
+  width: 50px;
+  height: 26px;
+}
+
+#workmode-modal .workmode-toggle > span:last-child {
+  color: #f1f1f1;
+}
+
+#workmode-modal .workmode-toggle input:focus-visible + .toggle-slider {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+#workmode-modal #workmode-status-text {
+  white-space: nowrap;
+}
+
+#workmode-modal .workmode-section {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+#workmode-modal .workhours-config {
+  gap: 0.75rem 1rem;
+}
+
+#workmode-modal .workhours-config input[type="time"] {
+  min-height: 42px;
+}
+
+#workmode-modal .workdays-config {
+  min-width: 0;
+  margin: 0;
+  padding: 0.75rem 0 0;
+  border: 0;
+  gap: 0.6rem 1rem;
+}
+
+#workmode-modal .workdays-config legend {
+  padding: 0;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f1f1f1;
+}
+
+#workmode-modal .workmode-day-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+#workmode-modal .workmode-day-preset {
+  min-height: 34px;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+#workmode-modal .workmode-day-preset[aria-pressed="true"] {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-weight: 600;
+}
+
+body:not([class*="theme-"]) #workmode-modal .workmode-day-preset {
+  color: #f1f1f1;
+}
+
+#workmode-modal .workdays-config label {
+  min-height: 34px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+#workmode-modal .workdays-config label:has(input:checked) {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+#workmode-modal .workdays-config label:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#workmode-modal .workmode-folder-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+#workmode-modal .workmode-folder-heading h3 {
+  margin-bottom: 0.25rem;
+}
+
+#workmode-modal #workmode-folder-count {
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+#workmode-modal #workmode-folder-list {
+  max-height: 240px;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+}
+
+#workmode-modal #workmode-folder-list label {
+  box-sizing: border-box;
+  gap: 0.6rem;
+  min-height: 38px;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+#workmode-modal input[type="checkbox"] {
+  color: inherit;
+  accent-color: currentColor;
+}
+
+#workmode-modal #workmode-folder-list input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+body:not([class*="theme-"]) #workmode-modal #workmode-folder-list label {
+  color: #f1f1f1;
+}
+
+body:not([class*="theme-"]) #workmode-modal input[type="checkbox"] {
+  accent-color: #ff9900;
+}
+
+#workmode-modal #workmode-folder-list label:has(input:checked) {
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+#workmode-modal #workmode-folder-list label:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#workmode-modal #workmode-folder-list .workmode-select-all {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: 600;
+}
+
+#workmode-modal #workmode-folder-list .workmode-folder-option {
+  padding-left: calc(0.55rem + var(--folder-depth, 0) * 0.9rem);
+  overflow-wrap: anywhere;
+}
+
+#workmode-modal .workmode-folder-icon {
+  flex: 0 0 auto;
+}
+
+#workmode-modal .workmode-empty,
+#workmode-modal .workmode-summary {
+  margin: 0.75rem 0 0;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+#workmode-modal .workmode-summary {
+  padding: 0.7rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow-wrap: anywhere;
+}
+
+#workmode-modal .workmode-validation-error {
+  margin: 0.75rem 0 0;
+  color: #ff8a80;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+#workmode-modal #workmode-status-text.active {
+  color: #4caf50;
+}
+
+#workmode-modal #workmode-status-text.needs-setup {
+  color: #ff8a80;
+}
+
+#workmode-modal .modal-footer {
+  position: sticky;
+  bottom: -1px;
+  z-index: 2;
+  margin-bottom: -0.5rem;
+  padding: 0.9rem 0 0.75rem;
+  background-color: inherit;
+  box-shadow: 0 -10px 14px rgba(0, 0, 0, 0.18);
+}
+
+#workmode-modal .modal-footer button {
+  min-height: 42px;
+}
+
+#workmode-modal button:focus-visible,
+#workmode-modal input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  #workmode-modal form {
+    width: 94vw;
+    max-height: 92vh;
+  }
+
+  #workmode-modal .workmode-toggle-container {
+    align-items: flex-start;
+  }
+
+  #workmode-modal .workdays-config {
+    gap: 0.45rem;
   }
 }
