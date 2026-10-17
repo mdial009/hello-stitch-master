@@ -3628,10 +3628,6 @@ function initSettingsModal() {
   const settingsSearchResults = document.getElementById("settings-search-results");
   const settingsSearchStatus = document.getElementById("settings-search-status");
 
-  function normalizeSettingsSearchText(value) {
-    return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  }
-
   function updateSettingsSearchResults() {
     if (!settingsSearchInput || !settingsSearchResults) return;
     const query = settingsSearchInput.value.trim();
@@ -3643,35 +3639,30 @@ function initSettingsModal() {
       return;
     }
 
-    const terms = normalizeSettingsSearchText(query).split(/\s+/).filter(Boolean);
-    const matches = [];
-    settingsModal.querySelectorAll(".settings-tab-panel .settings-section").forEach((section) => {
+    const searchableSections = Array.from(
+      settingsModal.querySelectorAll(".settings-tab-panel .settings-section")
+    ).flatMap((section) => {
       const panel = section.closest(".settings-tab-panel");
       const tabName = panel?.dataset.tabPanel;
       const tab = tabName && settingsModal.querySelector(`.settings-tab[data-tab="${tabName}"]`);
       const header = section.querySelector(".settings-section-header");
-      if (!tab || !header) return;
+      if (!tab || !header) return [];
 
       const heading = header.cloneNode(true);
       heading.querySelectorAll("button").forEach((button) => button.remove());
-      const sectionTitle = heading.textContent.trim();
-      const searchableText = normalizeSettingsSearchText(
-        section.textContent + " " + Array.from(section.querySelectorAll("input, select, textarea"))
+      return [{
+        section,
+        tab,
+        sectionTitle: heading.textContent.trim(),
+        searchText: section.textContent + " " + Array.from(section.querySelectorAll("input, select, textarea"))
           .map((element) => `${element.getAttribute("placeholder") || ""} ${element.getAttribute("aria-label") || ""}`)
-          .join(" ")
-      );
-      if (!terms.every((term) => searchableText.includes(term))) return;
-
-      const optionLabels = Array.from(section.querySelectorAll(".settings-option"))
-        .filter((option) => {
-          const optionText = normalizeSettingsSearchText(option.textContent);
-          return terms.every((term) => optionText.includes(term));
-        })
-        .map((option) => option.querySelector("span")?.textContent.trim())
-        .filter(Boolean);
-
-      matches.push({ section, tab, sectionTitle, optionLabels });
+          .join(" "),
+        options: Array.from(section.querySelectorAll(".settings-option"))
+          .map((option) => option.querySelector("span")?.textContent.trim())
+          .filter(Boolean),
+      }];
     });
+    const matches = searchSettingsSections(searchableSections, query);
 
     if (!matches.length) {
       const empty = document.createElement("p");
@@ -3687,7 +3678,7 @@ function initSettingsModal() {
         const title = document.createElement("strong");
         title.textContent = match.sectionTitle;
         const detail = document.createElement("span");
-        detail.textContent = `${category}${match.optionLabels.length ? ` · ${match.optionLabels.slice(0, 2).join(", ")}` : ""}`;
+        detail.textContent = `${category}${match.matchingOptions.length ? ` · ${match.matchingOptions.slice(0, 2).join(", ")}` : ""}`;
         button.append(title, detail);
         button.addEventListener("click", function() {
           match.tab.click();
@@ -3696,8 +3687,8 @@ function initSettingsModal() {
           const localFilter = match.section.querySelector(
             "#theme-search-input, #font-search-input, #font-size-search-input"
           );
-          if (localFilter && match.optionLabels.length) {
-            localFilter.value = match.optionLabels[0];
+          if (localFilter && match.matchingOptions.length) {
+            localFilter.value = match.matchingOptions[0];
             localFilter.dispatchEvent(new Event("input", { bubbles: true }));
           }
 
@@ -3705,7 +3696,7 @@ function initSettingsModal() {
           updateSettingsSearchResults();
           requestAnimationFrame(() => {
             match.section.scrollIntoView({ behavior: "smooth", block: "start" });
-            if (localFilter && match.optionLabels.length) localFilter.focus({ preventScroll: true });
+            if (localFilter && match.matchingOptions.length) localFilter.focus({ preventScroll: true });
             else {
               const sectionHeader = match.section.querySelector(".settings-section-header");
               if (sectionHeader) {

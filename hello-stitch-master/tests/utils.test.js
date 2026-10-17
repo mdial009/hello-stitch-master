@@ -6,6 +6,7 @@ const {
   trunc,
   safeLocalStorageGet,
   sortBookmarksInManualOrder,
+  searchSettingsSections,
   isSafeBookmarkUrl,
   getFaviconUrl,
   validateBookmarkImport,
@@ -28,6 +29,36 @@ assert.deepStrictEqual(
   ]).map((bookmark) => bookmark.title),
   ["First", "Second", "Third"]
 );
+
+const settingsSections = [
+  {
+    title: "Theme",
+    searchText: "Choose an appearance",
+    options: ["Default", "Ocean", "Sunset"],
+  },
+  {
+    title: "Typography",
+    searchText: "Choose a font",
+    options: ["Open Sans", "Poppins"],
+  },
+  {
+    title: "Accessibility",
+    searchText: "Café and reduced motion",
+    options: ["Disable animations"],
+  },
+];
+assert.deepStrictEqual(
+  searchSettingsSections(settingsSections, "oCeAn").map(({ title, matchingOptions }) => ({
+    title,
+    matchingOptions,
+  })),
+  [{ title: "Theme", matchingOptions: ["Ocean"] }]
+);
+assert.deepStrictEqual(
+  searchSettingsSections(settingsSections, "cafe motion").map(({ title }) => title),
+  ["Accessibility"]
+);
+assert.strictEqual(searchSettingsSections(settingsSections, "   ").length, 0);
 
 // trunc
 assert.strictEqual(trunc('hello', 2), 'h…');

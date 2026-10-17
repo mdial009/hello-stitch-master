@@ -60,6 +60,24 @@ function sortBookmarksInManualOrder(bookmarks) {
     .map(({ bookmark }) => bookmark);
 }
 
+function searchSettingsSections(sections, query) {
+  const terms = normalizeAccents(query).toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+
+  return sections.flatMap((section) => {
+    const options = section.options || [];
+    const searchableText = `${section.searchText || ""} ${options.join(" ")}`;
+    const normalizedText = normalizeAccents(searchableText).toLowerCase();
+    if (!terms.every((term) => normalizedText.includes(term))) return [];
+
+    const matchingOptions = options.filter((option) => {
+      const normalizedOption = normalizeAccents(option).toLowerCase();
+      return terms.every((term) => normalizedOption.includes(term));
+    });
+    return [{ ...section, matchingOptions }];
+  });
+}
+
 function isSafeBookmarkUrl(url) {
   try {
     return !["javascript:", "data:", "vbscript:", "blob:"].includes(new URL(url).protocol.toLowerCase());
@@ -893,6 +911,7 @@ function showWorkModeModal(columns) {
       safeLocalStorageGet,
       normalizeUrl,
       sortBookmarksInManualOrder,
+      searchSettingsSections,
       isSafeBookmarkUrl,
       cleanUrlForDisplay,
       getFaviconUrl,
